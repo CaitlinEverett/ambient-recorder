@@ -12,8 +12,13 @@ a specific experiment. The core contribution is a cross-device reliability
 study: is a commodity phone trustworthy enough to be metadata?
 
 Full design rationale: [`docs/proposal.docx`](docs/proposal.docx) (submitted
-course proposal). Work split and due dates: [`Team42_ToDo`](../Team42_ToDo.md)
-(also mirrored on the Teams notes page).
+course proposal).
+
+**Project links** — Repo: [CaitlinEverett/ambient-recorder](https://github.com/CaitlinEverett/ambient-recorder)
+· Live board with due dates: [GitHub Project #3](https://github.com/users/CaitlinEverett/projects/3)
+· Flat to-do: [`todo.md`](https://github.com/CaitlinEverett/ambient-recorder/blob/main/todo.md)
+· Architecture & framework choice: [`docs/architecture.md`](docs/architecture.md)
+· Schema: [`docs/schema.md`](docs/schema.md) · Mockups: [`docs/mockups.md`](docs/mockups.md)
 
 ## Hypotheses
 
