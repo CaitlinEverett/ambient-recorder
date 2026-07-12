@@ -27,10 +27,16 @@ targets:
           is ever recorded or stored.
         NSCameraUsageDescription: >-
           Covariate reads the camera's brightness metadata to log ambient light.
-          No photos or video are captured or stored.
+          Video is recorded only if you turn on Reference Video, and never
+          includes audio.
+        NSLocationWhenInUseUsageDescription: >-
+          Covariate records a coarse one-time location (region and altitude) at
+          session start to contextualize barometer readings and site conditions.
+          Precise coordinates are not stored.
         UIBackgroundModes: [audio]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: edu.gatech.team42.covariate
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

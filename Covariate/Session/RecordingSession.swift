@@ -72,7 +72,7 @@ final class RecordingSession: ObservableObject {
         intake.sync {}
         let record = SessionRecord(
             meta: .init(
-                schemaVersion: "0.1.0",
+                schemaVersion: "0.1.1",
                 experimentID: experimentID,
                 condition: condition,
                 site: site,
