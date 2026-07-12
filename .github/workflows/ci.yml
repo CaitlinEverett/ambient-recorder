@@ -23,7 +23,8 @@ jobs:
         run: xcodegen generate
       - name: Build (iOS Simulator)
         # pipefail is load-bearing: without it, `| tail` masks xcodebuild's
-        # exit code and a failed build reports success.
+        # exit code and a failed build reports success. tee keeps the full log so
+        # the next step can surface the real compile error (tail alone hid it once).
         run: |
           set -o pipefail
           xcodebuild build \
@@ -31,4 +32,9 @@ jobs:
             -scheme Covariate \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            | tail -100
+            2>&1 | tee build.log | tail -100
+      - name: Surface compile errors
+        if: failure()
+        run: |
+          echo "=== error: lines from the full build log ==="
+          grep -nE "error:" build.log | head -60 || echo "(no 'error:' lines captured)"

@@ -64,8 +64,8 @@ quick reading and diffs; when they disagree, the Project wins.
 
 - Nothing on CE's critical path (harness → app → analysis → report) depends on a
   ★ item landing first. If a ★ item slips, scope contracts to the proposal's core.
-- **Cross-platform pivot (7/12):** recorder moving to a cross-platform UI (Flutter
-  recommended) so it runs on either teammate's phone — pending 0b. Sensors stay
-  native behind platform channels; the v0.1.1 JSON schema is the contract. Native
-  Swift skeleton kept on `main` as a fallback; rewrite on `crossplatform-rewrite`.
-  See `docs/architecture.md` (on the branch).
+- **Cross-platform pivot (7/12):** recorder moving to a cross-platform UI —
+  **React Native + TypeScript** (chosen 7/12; Flutter was runner-up) — so it runs
+  on either teammate's phone. Sensors + recording engine stay native behind a
+  native module; the v0.1.1 JSON schema is the contract. See
+  [`docs/architecture.md`](docs/architecture.md).

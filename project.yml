@@ -39,4 +39,3 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: edu.gatech.team42.covariate
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

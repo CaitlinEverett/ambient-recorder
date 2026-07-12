@@ -1,6 +1,6 @@
 # Covariate
 
-**Github Project Kanban and Roadmap here:** [`(https://github.com/users/CaitlinEverett/projects/3/views/2?groupedBy%5BcolumnId%5D=368078746)`]((https://github.com/users/CaitlinEverett/projects/3/views/2?groupedBy%5BcolumnId%5D=368078746)) 
+**📋 Project board — Kanban + roadmap, with due dates:** [github.com/CaitlinEverett/projects/3](https://github.com/users/CaitlinEverett/projects/3/views/2?groupedBy%5BcolumnId%5D=368078746) 
 
 **Smartphone ambient-context recorder for experimental reproducibility.**
 CS-7470 Mobile & Ubiquitous Computing (GT OMS, Summer 2026) — Team 42:
@@ -14,8 +14,9 @@ a specific experiment. The core contribution is a cross-device reliability
 study: is a commodity phone trustworthy enough to be metadata?
 
 Full design rationale: [`docs/proposal.docx`](docs/proposal.docx) (submitted
-course proposal). Work split and due dates: [`Team42_ToDo`](../Team42_ToDo.md)
-(also mirrored on the Teams notes page).
+course proposal). Repo: [ambient-recorder](https://github.com/CaitlinEverett/ambient-recorder)
+· flat to-do: [`todo.md`](todo.md) · architecture & framework choice:
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Hypotheses
 
@@ -41,12 +42,10 @@ by **Wed Jul 22**, before any study runs):
 
     project.yml          XcodeGen definition — the .xcodeproj is generated, not committed
     Covariate/
-      App/               SwiftUI entry + session UI
-      UI/                Theme (design tokens) + shared data-mark views (LevelMeter, …)
+      App/               SwiftUI entry + session UI (native skeleton; RN rewrite incoming)
       Harness/           SharedClock, SensorChannel protocol, Sample, SamplingHealth
       Channels/          barometer, accelerometer, magnetometer, light (camera EXIF), mic level
       Session/           RecordingSession (fan-in), SessionRecord, JSON Exporter
-      Assets.xcassets/   AccentColor (the one brand choice; global accent)
     docs/
       proposal.docx      submitted course proposal — full design rationale
       mockups.md         ASCII UI mockups (four screens + sound cards)
@@ -75,12 +74,12 @@ A cross-channel **Disturbance Timeline** on the session-complete screen marks
 transients from every channel on one strip, answering the key reproducibility
 question: *was my "controlled" run actually controlled?* — which feeds H1/H3.
 
-**Native-first, with simple custom data marks.** The design system is one accent
-color plus [`Theme.swift`](Covariate/UI/Theme.swift); structure is stock SwiftUI
-(Form, List, Gauge, ProgressView, SF Symbols). Data marks (meters, one-sided
-sparklines, the loudness heatmap) are small `Canvas` views — less code than a
-chart library and they read like a lab instrument. Live views repaint at ~4 Hz,
-not per sample. No gradients, glows, or spring motion.
+**Simple, native-rendered data marks.** Structure uses the platform's stock UI
+components; the data marks (meters, one-sided sparklines, the loudness heatmap)
+are small custom-drawn views — less code than a chart library, and they read like
+a lab instrument. Live views repaint at ~4 Hz, not per sample. No gradients,
+glows, or spring motion. (Now targeting **React Native** — see
+[`docs/architecture.md`](docs/architecture.md).)
 
 **No audio waveform, ever.** No audio is stored, so there is no waveform — and we
 never draw anything that *reads* like one, because a mirrored squiggle is the
