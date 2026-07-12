@@ -1,5 +1,7 @@
 # Covariate
 
+**Github Project Kanban and Roadmap here:** [`(https://github.com/users/CaitlinEverett/projects/3/views/2?groupedBy%5BcolumnId%5D=368078746)`]((https://github.com/users/CaitlinEverett/projects/3/views/2?groupedBy%5BcolumnId%5D=368078746)) 
+
 **Smartphone ambient-context recorder for experimental reproducibility.**
 CS-7470 Mobile & Ubiquitous Computing (GT OMS, Summer 2026) — Team 42:
 Caitlin Everett, Christopher Kimberley.
