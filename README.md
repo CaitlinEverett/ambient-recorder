@@ -30,7 +30,7 @@ dates: `Team42_ToDo` (Teams notes page).
 
 ## Build
 
-Requires Xcode 15+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+Requires Xcode 16+ (xcodegen >= 2.45 emits Xcode-16 project format 77) and [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
     brew install xcodegen
     xcodegen generate

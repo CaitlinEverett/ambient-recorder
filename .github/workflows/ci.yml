@@ -9,7 +9,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    # Pinned, not macos-latest: xcodegen >= 2.45 emits Xcode project format 77,
+    # which requires Xcode 16+. macos-15's default Xcode is 16.4. macos-14
+    # (Xcode 15.4) cannot read the generated project — learned the hard way
+    # (run 29202857649, a false green).
+    runs-on: macos-15
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -18,10 +22,13 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
       - name: Build (iOS Simulator)
+        # pipefail is load-bearing: without it, `| tail` masks xcodebuild's
+        # exit code and a failed build reports success.
         run: |
+          set -o pipefail
           xcodebuild build \
             -project Covariate.xcodeproj \
             -scheme Covariate \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            | tail -50
+            | tail -100
