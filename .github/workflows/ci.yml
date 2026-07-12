@@ -1,0 +1,27 @@
+# Build verification on a macOS runner.
+# This exists because development happens partly from a Linux environment that
+# cannot run Xcode — every push must prove the project still compiles.
+name: build
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build (iOS Simulator)
+        run: |
+          xcodebuild build \
+            -project Covariate.xcodeproj \
+            -scheme Covariate \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -50

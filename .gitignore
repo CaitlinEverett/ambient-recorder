@@ -1,0 +1,20 @@
+# Xcode / Swift
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# XcodeGen generates the project; only project.yml is source of truth
+!project.yml
+
+# macOS
+.DS_Store
+
+# Python (analysis/)
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
