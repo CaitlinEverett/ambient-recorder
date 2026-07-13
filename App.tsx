@@ -69,9 +69,14 @@ export default function App() {
     setLastExport(null);
     setExportError(null);
     rec.current.start();
+    // Capture location in the BACKGROUND — never block sensor start on the GPS
+    // fix. (Awaiting it left the first ~2.5 s of the session with no samples.)
+    // It only needs to be ready by stop(), which is seconds away.
     locationRef.current = null;
     if (locationOn) {
-      try { locationRef.current = await getCoarseLocation(); } catch { locationRef.current = null; }
+      getCoarseLocation()
+        .then((fix) => { locationRef.current = fix; })
+        .catch(() => { locationRef.current = null; });
     }
 
     try { await Accelerometer.requestPermissionsAsync(); } catch {}
