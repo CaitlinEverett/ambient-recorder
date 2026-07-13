@@ -31,6 +31,13 @@ export interface ChannelHealth {
   dropFraction: number;
 }
 
+/** Coarse, dataset-safe location — region + altitude only, never raw coordinates. */
+export interface LocationFix {
+  region: string; // reverse-geocoded, e.g. "Chicago, IL, US"
+  altitudeM: number | null; // meters ASL; contextualizes the barometer baseline
+  accuracy: string; // granularity stored, e.g. "city"
+}
+
 export interface SessionMeta {
   schemaVersion: string;
   experimentID: string;
@@ -42,6 +49,7 @@ export interface SessionMeta {
   startedAtWall: string; // ISO 8601
   endedAtWall: string;
   notes: string;
+  location?: LocationFix; // v0.1.1, optional; present only when the user opts in
 }
 
 export interface SessionRecord {

@@ -6,6 +6,8 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import CovariateLightModule from './modules/covariate-light/src/CovariateLightModule';
 import CovariateMicModule from './modules/covariate-mic/src/CovariateMicModule';
 import { SessionRecorder, exportRecord, shareUri } from './src/recorder';
+import { getCoarseLocation } from './src/location';
+import { LocationFix } from './src/schema';
 
 // Covariate MVP — runs in Expo Go (accel/mag/baro) or a dev client (all 5).
 // Records a session, then exports it as schema-v0.1.1 JSON (docs/schema.md) via
@@ -37,6 +39,7 @@ export default function App() {
   const [condition, setCondition] = useState<'controlled' | 'disturbed'>('controlled');
   const [site, setSite] = useState('');
   const [notes, setNotes] = useState('');
+  const [locationOn, setLocationOn] = useState(false);
 
   const [exporting, setExporting] = useState(false);
   const [lastExport, setLastExport] = useState<{ uri: string; name: string; count: number } | null>(null);
@@ -45,6 +48,7 @@ export default function App() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const c = useRef({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0 });
   const rec = useRef(new SessionRecorder());
+  const locationRef = useRef<LocationFix | null>(null);
 
   useEffect(() => {
     Barometer.isAvailableAsync().then(setBaroOk).catch(() => setBaroOk(false));
@@ -60,6 +64,10 @@ export default function App() {
     setElapsed(0);
     setLastExport(null);
     rec.current.start();
+    locationRef.current = null;
+    if (locationOn) {
+      try { locationRef.current = await getCoarseLocation(); } catch { locationRef.current = null; }
+    }
 
     try { await Accelerometer.requestPermissionsAsync(); } catch {}
     Accelerometer.setUpdateInterval(20); // ~50 Hz
@@ -129,7 +137,7 @@ export default function App() {
 
   async function stopAndExport() {
     stopSensors();
-    const record = rec.current.build({ experimentID: experimentID.trim(), condition, site: site.trim(), notes: notes.trim() });
+    const record = rec.current.build({ experimentID: experimentID.trim(), condition, site: site.trim(), notes: notes.trim(), location: locationRef.current });
     setExporting(true);
     try {
       const { uri, name } = await exportRecord(record);
@@ -189,6 +197,12 @@ export default function App() {
             style={styles.input} value={notes} onChangeText={setNotes}
             placeholder="Notes" placeholderTextColor="#5b616e" editable={!recording}
           />
+          <Pressable disabled={recording} onPress={() => setLocationOn((v) => !v)}
+            style={[styles.locBtn, locationOn && styles.condOn]}>
+            <Text style={[styles.condText, locationOn && styles.condTextOn]}>
+              📍 {locationOn ? 'location: region + altitude' : 'location: off (tap to enable)'}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.timerBox}>
@@ -261,6 +275,7 @@ const styles = StyleSheet.create({
   condOn: { backgroundColor: ACCENT, borderColor: ACCENT },
   condText: { color: '#9aa1ad', fontSize: 14, fontWeight: '600' },
   condTextOn: { color: '#08121a' },
+  locBtn: { paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: '#23262d', alignItems: 'center' },
   timerBox: { alignItems: 'center', paddingVertical: 12 },
   timer: { color: '#e9ebf0', fontSize: 54, fontWeight: '700', fontVariant: ['tabular-nums'] },
   timerLabel: { color: '#9aa1ad', fontSize: 13, marginTop: 2 },

@@ -12,6 +12,7 @@ import * as Sharing from 'expo-sharing';
 import {
   ChannelHealth,
   ChannelId,
+  LocationFix,
   NOMINAL_RATE,
   SCHEMA_VERSION,
   Sample,
@@ -80,7 +81,7 @@ export class SessionRecorder {
       .sort((a, b) => a.channel.localeCompare(b.channel));
   }
 
-  build(input: { experimentID: string; condition: string; site: string; notes: string }): SessionRecord {
+  build(input: { experimentID: string; condition: string; site: string; notes: string; location?: LocationFix | null }): SessionRecord {
     return {
       meta: {
         schemaVersion: SCHEMA_VERSION,
@@ -88,6 +89,7 @@ export class SessionRecorder {
         condition: input.condition,
         site: input.site,
         notes: input.notes,
+        location: input.location ?? undefined,
         device: Device.modelName ?? 'unknown',
         osVersion: `${Device.osName ?? ''} ${Device.osVersion ?? ''}`.trim(),
         appVersion: 'mvp',
