@@ -168,6 +168,15 @@ export default function App() {
     }
   }
 
+  function clearAll() {
+    setExperimentID(''); setCondition('controlled'); setSite(''); setNotes(''); setLocationOn(false);
+    setLastExport(null); setExportError(null); setHealthChecks(null);
+    setElapsed(0); setCounts({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0 });
+    setAccel({ x: 0, y: 0, z: 0 }); setMag({ x: 0, y: 0, z: 0 });
+    setPressure(NaN); setAltitude(NaN); setBrightness(NaN); setDBFS(NaN);
+    rec.current = new SessionRecorder();
+  }
+
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
   const ss = String(elapsed % 60).padStart(2, '0');
   const rate = (n: number) => (elapsed > 0 ? `${(n / elapsed).toFixed(0)} Hz` : '—');
@@ -281,6 +290,12 @@ export default function App() {
           <Text style={styles.btnText}>{recording ? '■  Stop & export' : '▶  Start recording'}</Text>
         </Pressable>
 
+        {!recording && (
+          <Pressable onPress={clearAll} style={styles.clearBtn}>
+            <Text style={styles.clearBtnText}>↺  Start over</Text>
+          </Pressable>
+        )}
+
         {exporting && <Text style={styles.foot}>saving session…</Text>}
         {!exporting && exportError && (
           <Text style={[styles.foot, { color: '#e08a7a' }]}>export failed: {exportError}</Text>
@@ -341,6 +356,8 @@ const styles = StyleSheet.create({
   btn: { borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   btnDisabled: { opacity: 0.4 },
   btnText: { color: '#08121a', fontSize: 17, fontWeight: '700' },
+  clearBtn: { alignItems: 'center', paddingVertical: 8 },
+  clearBtnText: { color: '#9aa1ad', fontSize: 14, fontWeight: '600' },
   exportRow: { backgroundColor: '#12211d', borderRadius: 10, borderWidth: 1, borderColor: '#1f3a30', padding: 12 },
   exportText: { color: '#7fd8b0', fontSize: 14, fontWeight: '600' },
   exportSub: { color: '#5b8a76', fontSize: 12, marginTop: 2 },
