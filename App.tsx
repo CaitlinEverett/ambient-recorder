@@ -9,6 +9,9 @@ import { SessionRecorder, exportRecord, shareUri } from './src/recorder';
 import { getCoarseLocation } from './src/location';
 import { LocationFix } from './src/schema';
 import { runHealthCheck, ChannelCheck } from './src/health';
+import HomeScreen from './src/HomeScreen';
+import { Experiment, createExperiment, listExperiments } from './src/experiments';
+import { SavedSession, listSessions } from './src/sessions';
 
 // Covariate MVP — runs in Expo Go (accel/mag/baro) or a dev client (all 5).
 // Records a session, then exports it as schema-v0.1.1 JSON (docs/schema.md) via
@@ -47,6 +50,9 @@ export default function App() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [healthChecks, setHealthChecks] = useState<ChannelCheck[] | null>(null);
+  const [screen, setScreen] = useState<'home' | 'record'>('home');
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [sessions, setSessions] = useState<SavedSession[]>([]);
 
   const subs = useRef<{ remove: () => void }[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -59,6 +65,7 @@ export default function App() {
     if (CovariateLightModule) {
       CovariateLightModule.isAvailable().then(setLightOk).catch(() => setLightOk(false));
     }
+    refreshHome();
     return () => { stopSensors(); };
   }, []);
 
@@ -152,6 +159,7 @@ export default function App() {
     try {
       const { uri, name } = await exportRecord(record);
       setLastExport({ uri, name, count: record.samples.length });
+      refreshHome();
     } catch (e) {
       setExportError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -177,6 +185,31 @@ export default function App() {
     rec.current = new SessionRecorder();
   }
 
+  async function refreshHome() {
+    setExperiments(await listExperiments());
+    setSessions(await listSessions());
+  }
+
+  async function handleCreate(name: string) {
+    const exp = await createExperiment(name);
+    setExperiments((prev) => [exp, ...prev]);
+    openExperiment(exp);
+  }
+
+  function openExperiment(exp: Experiment) {
+    setExperimentID(exp.name);
+    setLastExport(null);
+    setExportError(null);
+    setHealthChecks(null);
+    setScreen('record');
+  }
+
+  function goHome() {
+    if (recording) return;
+    setScreen('home');
+    refreshHome();
+  }
+
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
   const ss = String(elapsed % 60).padStart(2, '0');
   const rate = (n: number) => (elapsed > 0 ? `${(n / elapsed).toFixed(0)} Hz` : '—');
@@ -193,10 +226,27 @@ export default function App() {
 
   const canStart = experimentID.trim().length > 0;
 
+  if (screen === 'home') {
+    return (
+      <HomeScreen
+        experiments={experiments}
+        sessions={sessions}
+        onCreate={handleCreate}
+        onPick={openExperiment}
+        onShare={(uri) => shareUri(uri)}
+      />
+    );
+  }
+
   return (
     <View style={styles.app}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {!recording && (
+          <Pressable onPress={goHome} style={styles.homeBack}>
+            <Text style={styles.homeBackText}>← Home</Text>
+          </Pressable>
+        )}
         <Text style={styles.brand}>Co<Text style={{ color: ACCENT }}>variate</Text></Text>
         <Text style={styles.subtitle}>
           sensor MVP · {hasLight && hasMic ? 'dev client · 5 channels' : 'Expo Go · 3 live'}
@@ -358,6 +408,8 @@ const styles = StyleSheet.create({
   btnText: { color: '#08121a', fontSize: 17, fontWeight: '700' },
   clearBtn: { alignItems: 'center', paddingVertical: 8 },
   clearBtnText: { color: '#9aa1ad', fontSize: 14, fontWeight: '600' },
+  homeBack: { paddingBottom: 2 },
+  homeBackText: { color: ACCENT, fontSize: 14, fontWeight: '600' },
   exportRow: { backgroundColor: '#12211d', borderRadius: 10, borderWidth: 1, borderColor: '#1f3a30', padding: 12 },
   exportText: { color: '#7fd8b0', fontSize: 14, fontWeight: '600' },
   exportSub: { color: '#5b8a76', fontSize: 12, marginTop: 2 },
