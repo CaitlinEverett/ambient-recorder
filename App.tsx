@@ -8,16 +8,15 @@ import CovariateMicModule from './modules/covariate-mic/src/CovariateMicModule';
 import { SessionRecorder, exportRecord, shareUri } from './src/recorder';
 import { getCoarseLocation } from './src/location';
 import { LocationFix } from './src/schema';
-import { runHealthCheck, ChannelCheck } from './src/health';
 import HomeScreen from './src/HomeScreen';
 import { Experiment, createExperiment, listExperiments } from './src/experiments';
 import { SavedSession, listSessions } from './src/sessions';
-import { runCalibration, saveBaseline, Baseline } from './src/calibrate';
+import SensorTools from './src/SensorTools';
+import Accordion from './src/Accordion';
 
 // Covariate MVP — runs in Expo Go (accel/mag/baro) or a dev client (all 5).
-// Records a session, then exports it as schema-v0.1.1 JSON (docs/schema.md) via
-// the share sheet. Light/mic use native modules (dev client only); in Expo Go
-// they show "dev build". BLE (external) not wired yet.
+// Home lists experiments + sessions + device sensor tools; the record screen
+// (this component) records a session and exports schema-v0.1.1 JSON.
 
 type Vec = { x: number; y: number; z: number };
 const ACCENT = '#4fb3c4';
@@ -49,14 +48,9 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [lastExport, setLastExport] = useState<{ uri: string; name: string; count: number } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
-  const [healthChecks, setHealthChecks] = useState<ChannelCheck[] | null>(null);
   const [screen, setScreen] = useState<'home' | 'record'>('home');
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [sessions, setSessions] = useState<SavedSession[]>([]);
-  const [calibrating, setCalibrating] = useState(false);
-  const [calibRemaining, setCalibRemaining] = useState(0);
-  const [baseline, setBaseline] = useState<Baseline | null>(null);
 
   const subs = useRef<{ remove: () => void }[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -80,9 +74,7 @@ export default function App() {
     setLastExport(null);
     setExportError(null);
     rec.current.start();
-    // Capture location in the BACKGROUND — never block sensor start on the GPS
-    // fix. (Awaiting it left the first ~2.5 s of the session with no samples.)
-    // It only needs to be ready by stop(), which is seconds away.
+    // Capture location in the BACKGROUND — never block sensor start on the GPS fix.
     locationRef.current = null;
     if (locationOn) {
       getCoarseLocation()
@@ -171,35 +163,10 @@ export default function App() {
     }
   }
 
-  async function runCheck() {
-    setChecking(true);
-    try {
-      setHealthChecks(await runHealthCheck({ hasLight, hasMic }));
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  async function runCalibrate() {
-    setBaseline(null);
-    setCalibrating(true);
-    const secs = 20;
-    setCalibRemaining(secs);
-    const iv = setInterval(() => setCalibRemaining((r) => Math.max(0, r - 1)), 1000);
-    try {
-      const b = await runCalibration({ seconds: secs, experimentID: experimentID.trim() || 'session' });
-      await saveBaseline(b);
-      setBaseline(b);
-      refreshHome();
-    } finally {
-      clearInterval(iv);
-      setCalibrating(false);
-    }
-  }
-
   function clearAll() {
-    setExperimentID(''); setCondition('controlled'); setSite(''); setNotes(''); setLocationOn(false);
-    setLastExport(null); setExportError(null); setHealthChecks(null); setBaseline(null);
+    // Fresh session under the SAME experiment — keeps experimentID.
+    setCondition('controlled'); setSite(''); setNotes(''); setLocationOn(false);
+    setLastExport(null); setExportError(null);
     setElapsed(0); setCounts({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0 });
     setAccel({ x: 0, y: 0, z: 0 }); setMag({ x: 0, y: 0, z: 0 });
     setPressure(NaN); setAltitude(NaN); setBrightness(NaN); setDBFS(NaN);
@@ -221,7 +188,6 @@ export default function App() {
     setExperimentID(exp.name);
     setLastExport(null);
     setExportError(null);
-    setHealthChecks(null);
     setScreen('record');
   }
 
@@ -270,79 +236,42 @@ export default function App() {
         )}
         <Text style={styles.brand}>Co<Text style={{ color: ACCENT }}>variate</Text></Text>
         <Text style={styles.subtitle}>
-          sensor MVP · {hasLight && hasMic ? 'dev client · 5 channels' : 'Expo Go · 3 live'}
+          {experimentID || 'session'} · {hasLight && hasMic ? 'dev client' : 'Expo Go'}
         </Text>
 
-        <View style={styles.metaCard}>
-          <TextInput
-            style={styles.input} value={experimentID} onChangeText={setExperimentID}
-            placeholder="Experiment ID (required)" placeholderTextColor="#5b616e"
-            editable={!recording} autoCapitalize="none" autoCorrect={false}
-          />
-          <View style={styles.condRow}>
-            {(['controlled', 'disturbed'] as const).map((cond) => (
-              <Pressable key={cond} disabled={recording} onPress={() => setCondition(cond)}
-                style={[styles.condBtn, condition === cond && styles.condOn]}>
-                <Text style={[styles.condText, condition === cond && styles.condTextOn]}>{cond}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <TextInput
-            style={styles.input} value={site} onChangeText={setSite}
-            placeholder="Site (e.g. chicago-kitchen)" placeholderTextColor="#5b616e"
-            editable={!recording} autoCapitalize="none" autoCorrect={false}
-          />
-          <TextInput
-            style={styles.input} value={notes} onChangeText={setNotes}
-            placeholder="Notes" placeholderTextColor="#5b616e" editable={!recording}
-          />
-          <Pressable disabled={recording} onPress={() => setLocationOn((v) => !v)}
-            style={[styles.locBtn, locationOn && styles.condOn]}>
-            <Text style={[styles.condText, locationOn && styles.condTextOn]}>
-              📍 {locationOn ? 'location: region + altitude' : 'location: off (tap to enable)'}
-            </Text>
-          </Pressable>
+        <View style={styles.condRow}>
+          {(['controlled', 'disturbed'] as const).map((cond) => (
+            <Pressable key={cond} disabled={recording} onPress={() => setCondition(cond)}
+              style={[styles.condBtn, condition === cond && styles.condOn]}>
+              <Text style={[styles.condText, condition === cond && styles.condTextOn]}>{cond}</Text>
+            </Pressable>
+          ))}
         </View>
 
         {!recording && (
-          <View style={styles.checkWrap}>
-            <Pressable onPress={runCheck} disabled={checking} style={styles.checkBtn}>
-              <Text style={styles.checkBtnText}>{checking ? 'checking sensors…' : '🔍 Check sensors'}</Text>
-            </Pressable>
-            {healthChecks && (
-              <View style={styles.healthPanel}>
-                {healthChecks.map((h) => (
-                  <View key={h.channel} style={styles.healthRow}>
-                    <Text style={[styles.healthDot, { color: h.status === 'ok' ? '#7fd8b0' : h.status === 'warn' ? '#e0b070' : '#e08a7a' }]}>●</Text>
-                    <Text style={styles.healthCh}>{h.channel}</Text>
-                    <Text style={styles.healthDetail}>{h.detail}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            <Pressable onPress={runCalibrate} disabled={calibrating} style={styles.checkBtn}>
-              <Text style={styles.checkBtnText}>
-                {calibrating ? `calibrating… hold still · ${calibRemaining}s` : '⚖ Calibrate baseline (20 s at rest)'}
+          <Accordion title="details — site · notes · location">
+            <TextInput
+              style={styles.input} value={site} onChangeText={setSite}
+              placeholder="Site (e.g. chicago-kitchen)" placeholderTextColor="#5b616e"
+              autoCapitalize="none" autoCorrect={false}
+            />
+            <TextInput
+              style={styles.input} value={notes} onChangeText={setNotes}
+              placeholder="Notes" placeholderTextColor="#5b616e"
+            />
+            <Pressable onPress={() => setLocationOn((v) => !v)}
+              style={[styles.locBtn, locationOn && styles.condOn]}>
+              <Text style={[styles.condText, locationOn && styles.condTextOn]}>
+                📍 {locationOn ? 'location: region + altitude' : 'location: off (tap to enable)'}
               </Text>
             </Pressable>
-            {baseline && (
-              <View style={styles.healthPanel}>
-                {baseline.channels.map((b) => {
-                  const short = b.channel === 'accelerometer' ? 'accel' : b.channel === 'magnetometer' ? 'mag' : 'baro';
-                  const unit = b.channel === 'barometer' ? 'hPa' : b.channel === 'magnetometer' ? 'µT' : 'g';
-                  const md = b.channel === 'barometer' ? 2 : 3;
-                  return (
-                    <View key={b.channel} style={styles.healthRow}>
-                      <Text style={styles.healthCh}>{short}</Text>
-                      <Text style={styles.healthDetail}>
-                        bias {Number.isFinite(b.mean) ? b.mean.toFixed(md) : '—'} {unit} · noise ±{Number.isFinite(b.noiseFloor) ? b.noiseFloor.toFixed(4) : '—'}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+          </Accordion>
+        )}
+
+        {!recording && (
+          <Accordion title="sensor tools — check · calibrate">
+            <SensorTools experimentID={experimentID} />
+          </Accordion>
         )}
 
         <View style={styles.timerBox}>
@@ -399,14 +328,6 @@ export default function App() {
             <Text style={styles.exportSub}>{lastExport.name}  ·  tap to share</Text>
           </Pressable>
         )}
-
-        {!lastExport && !exporting && (
-          <Text style={styles.foot}>
-            {hasLight && hasMic
-              ? 'Records all 5 channels, then exports schema-v0.1.1 JSON.'
-              : 'accel · mag · barometer record + export now. light + mic need the dev-client build.'}
-          </Text>
-        )}
       </ScrollView>
     </View>
   );
@@ -414,31 +335,22 @@ export default function App() {
 
 const styles = StyleSheet.create({
   app: { flex: 1, backgroundColor: '#0e1013' },
-  scroll: { padding: 22, paddingTop: 64, gap: 16 },
-  brand: { color: '#e9ebf0', fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { color: '#9aa1ad', fontSize: 13, marginTop: -10, letterSpacing: 0.4 },
-  metaCard: { backgroundColor: '#161a1f', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#23262d', gap: 8 },
+  scroll: { padding: 22, paddingTop: 60, gap: 12 },
+  brand: { color: '#e9ebf0', fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { color: '#9aa1ad', fontSize: 13, marginTop: -8, letterSpacing: 0.3 },
   input: { color: '#e9ebf0', fontSize: 15, backgroundColor: '#0e1013', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#23262d' },
   condRow: { flexDirection: 'row', gap: 8 },
-  condBtn: { flex: 1, paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: '#23262d', alignItems: 'center' },
+  condBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#23262d', alignItems: 'center' },
   condOn: { backgroundColor: ACCENT, borderColor: ACCENT },
   condText: { color: '#9aa1ad', fontSize: 14, fontWeight: '600' },
   condTextOn: { color: '#08121a' },
   locBtn: { paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: '#23262d', alignItems: 'center' },
-  checkWrap: { gap: 8 },
-  checkBtn: { paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: '#23262d', alignItems: 'center', backgroundColor: '#161a1f' },
-  checkBtnText: { color: ACCENT, fontSize: 14, fontWeight: '600' },
-  healthPanel: { backgroundColor: '#161a1f', borderRadius: 12, borderWidth: 1, borderColor: '#23262d', paddingVertical: 4 },
-  healthRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 12 },
-  healthDot: { fontSize: 12 },
-  healthCh: { width: 46, color: '#e9ebf0', fontSize: 13, fontWeight: '600', fontFamily: 'Menlo' },
-  healthDetail: { flex: 1, color: '#9aa1ad', fontSize: 12.5 },
-  timerBox: { alignItems: 'center', paddingVertical: 12 },
-  timer: { color: '#e9ebf0', fontSize: 54, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  timerBox: { alignItems: 'center', paddingVertical: 6 },
+  timer: { color: '#e9ebf0', fontSize: 46, fontWeight: '700', fontVariant: ['tabular-nums'] },
   timerLabel: { color: '#9aa1ad', fontSize: 13, marginTop: 2 },
   table: { backgroundColor: '#161a1f', borderRadius: 14, padding: 6, borderWidth: 1, borderColor: '#23262d' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 8 },
-  head: { paddingVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, gap: 8 },
+  head: { paddingVertical: 6 },
   dim: { color: '#5b616e', fontSize: 12 },
   ch: { width: 52, color: '#e9ebf0', fontSize: 15, fontWeight: '600', fontFamily: 'Menlo' },
   val: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 6 },
@@ -446,10 +358,10 @@ const styles = StyleSheet.create({
   unit: { color: '#5b616e', fontSize: 11 },
   n: { width: 88, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'flex-end', gap: 6 },
   nText: { color: '#e9ebf0', fontSize: 14, fontFamily: 'Menlo', fontVariant: ['tabular-nums'] },
-  btn: { borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  btn: { borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   btnDisabled: { opacity: 0.4 },
   btnText: { color: '#08121a', fontSize: 17, fontWeight: '700' },
-  clearBtn: { alignItems: 'center', paddingVertical: 8 },
+  clearBtn: { alignItems: 'center', paddingVertical: 6 },
   clearBtnText: { color: '#9aa1ad', fontSize: 14, fontWeight: '600' },
   homeBack: { paddingBottom: 2 },
   homeBackText: { color: ACCENT, fontSize: 14, fontWeight: '600' },

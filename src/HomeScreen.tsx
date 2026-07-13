@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { StatusBar } from 'expo-status-bar';
 import { Experiment } from './experiments';
 import { SavedSession } from './sessions';
+import SensorTools from './SensorTools';
 
 const ACCENT = '#4fb3c4';
 
@@ -65,6 +66,9 @@ export default function HomeScreen(props: {
             </Pressable>
           ))}
         </View>
+
+        <Text style={styles.section}>SENSOR TOOLS</Text>
+        <SensorTools experimentID="device" />
       </ScrollView>
     </View>
   );
