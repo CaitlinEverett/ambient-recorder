@@ -24,14 +24,6 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      [
-        "expo-audio",
-        {
-          "microphonePermission": "Covariate measures ambient sound level as a single loudness number. Raw audio is never recorded or stored."
-        }
-      ]
-    ]
+    }
   }
 }
