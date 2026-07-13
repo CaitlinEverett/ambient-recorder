@@ -8,6 +8,7 @@ import CovariateMicModule from './modules/covariate-mic/src/CovariateMicModule';
 import { SessionRecorder, exportRecord, shareUri } from './src/recorder';
 import { getCoarseLocation } from './src/location';
 import { LocationFix } from './src/schema';
+import { runHealthCheck, ChannelCheck } from './src/health';
 
 // Covariate MVP — runs in Expo Go (accel/mag/baro) or a dev client (all 5).
 // Records a session, then exports it as schema-v0.1.1 JSON (docs/schema.md) via
@@ -44,6 +45,8 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [lastExport, setLastExport] = useState<{ uri: string; name: string; count: number } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [healthChecks, setHealthChecks] = useState<ChannelCheck[] | null>(null);
 
   const subs = useRef<{ remove: () => void }[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -151,6 +154,15 @@ export default function App() {
     }
   }
 
+  async function runCheck() {
+    setChecking(true);
+    try {
+      setHealthChecks(await runHealthCheck({ hasLight, hasMic }));
+    } finally {
+      setChecking(false);
+    }
+  }
+
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
   const ss = String(elapsed % 60).padStart(2, '0');
   const rate = (n: number) => (elapsed > 0 ? `${(n / elapsed).toFixed(0)} Hz` : '—');
@@ -206,6 +218,25 @@ export default function App() {
             </Text>
           </Pressable>
         </View>
+
+        {!recording && (
+          <View style={styles.checkWrap}>
+            <Pressable onPress={runCheck} disabled={checking} style={styles.checkBtn}>
+              <Text style={styles.checkBtnText}>{checking ? 'checking sensors…' : '🔍 Check sensors'}</Text>
+            </Pressable>
+            {healthChecks && (
+              <View style={styles.healthPanel}>
+                {healthChecks.map((h) => (
+                  <View key={h.channel} style={styles.healthRow}>
+                    <Text style={[styles.healthDot, { color: h.status === 'ok' ? '#7fd8b0' : h.status === 'warn' ? '#e0b070' : '#e08a7a' }]}>●</Text>
+                    <Text style={styles.healthCh}>{h.channel}</Text>
+                    <Text style={styles.healthDetail}>{h.detail}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.timerBox}>
           <Text style={styles.timer}>{mm}:{ss}</Text>
@@ -281,6 +312,14 @@ const styles = StyleSheet.create({
   condText: { color: '#9aa1ad', fontSize: 14, fontWeight: '600' },
   condTextOn: { color: '#08121a' },
   locBtn: { paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: '#23262d', alignItems: 'center' },
+  checkWrap: { gap: 8 },
+  checkBtn: { paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: '#23262d', alignItems: 'center', backgroundColor: '#161a1f' },
+  checkBtnText: { color: ACCENT, fontSize: 14, fontWeight: '600' },
+  healthPanel: { backgroundColor: '#161a1f', borderRadius: 12, borderWidth: 1, borderColor: '#23262d', paddingVertical: 4 },
+  healthRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 12 },
+  healthDot: { fontSize: 12 },
+  healthCh: { width: 46, color: '#e9ebf0', fontSize: 13, fontWeight: '600', fontFamily: 'Menlo' },
+  healthDetail: { flex: 1, color: '#9aa1ad', fontSize: 12.5 },
   timerBox: { alignItems: 'center', paddingVertical: 12 },
   timer: { color: '#e9ebf0', fontSize: 54, fontWeight: '700', fontVariant: ['tabular-nums'] },
   timerLabel: { color: '#9aa1ad', fontSize: 13, marginTop: 2 },
