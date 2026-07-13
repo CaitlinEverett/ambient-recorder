@@ -11,7 +11,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Covariate reads camera-frame brightness metadata to measure ambient light. No photos or video are captured or stored.",
         "NSMicrophoneUsageDescription": "Covariate measures ambient sound level as a single loudness number. Raw audio is never recorded or stored."
-      }
+      },
+      "bundleIdentifier": "com.anonymous.covariate-mvp"
     },
     "android": {
       "adaptiveIcon": {
