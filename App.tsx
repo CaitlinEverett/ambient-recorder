@@ -43,6 +43,7 @@ export default function App() {
 
   const [exporting, setExporting] = useState(false);
   const [lastExport, setLastExport] = useState<{ uri: string; name: string; count: number } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const subs = useRef<{ remove: () => void }[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -63,6 +64,7 @@ export default function App() {
     setCounts({ ...c.current });
     setElapsed(0);
     setLastExport(null);
+    setExportError(null);
     rec.current.start();
     locationRef.current = null;
     if (locationOn) {
@@ -142,8 +144,8 @@ export default function App() {
     try {
       const { uri, name } = await exportRecord(record);
       setLastExport({ uri, name, count: record.samples.length });
-    } catch {
-      // leave lastExport null; user can retry by recording again
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : String(e));
     } finally {
       setExporting(false);
     }
@@ -244,10 +246,13 @@ export default function App() {
         </Pressable>
 
         {exporting && <Text style={styles.foot}>saving session…</Text>}
+        {!exporting && exportError && (
+          <Text style={[styles.foot, { color: '#e08a7a' }]}>export failed: {exportError}</Text>
+        )}
         {!exporting && lastExport && (
           <Pressable style={styles.exportRow} onPress={() => shareUri(lastExport.uri)}>
-            <Text style={styles.exportText}>✓ saved {lastExport.name}</Text>
-            <Text style={styles.exportSub}>{lastExport.count.toLocaleString()} samples · tap to share again</Text>
+            <Text style={styles.exportText}>✓ saved · {lastExport.count.toLocaleString()} samples</Text>
+            <Text style={styles.exportSub}>{lastExport.name}  ·  tap to share</Text>
           </Pressable>
         )}
 

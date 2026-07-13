@@ -109,12 +109,13 @@ export async function exportRecord(record: SessionRecord): Promise<{ uri: string
   const name = `covariate_${safeId}_${stamp}.json`;
   const uri = (FileSystem.documentDirectory ?? '') + name;
   await FileSystem.writeAsStringAsync(uri, JSON.stringify(record, null, 2));
-  await shareUri(uri);
+  // Writes only — sharing is triggered separately by a user tap (presenting the
+  // iOS share sheet from an explicit gesture avoids the blank/hung-sheet issue).
   return { uri, name };
 }
 
 export async function shareUri(uri: string): Promise<void> {
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, { mimeType: 'application/json', UTI: 'public.json' });
+    await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Covariate session' });
   }
 }
