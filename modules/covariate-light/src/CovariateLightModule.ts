@@ -1,4 +1,4 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { NativeModule, requireOptionalNativeModule } from 'expo';
 import type { CovariateLightModuleEvents } from './CovariateLight.types';
 
 declare class CovariateLightModule extends NativeModule<CovariateLightModuleEvents> {
@@ -11,4 +11,6 @@ declare class CovariateLightModule extends NativeModule<CovariateLightModuleEven
   stop(): void;
 }
 
-export default requireNativeModule<CovariateLightModule>('CovariateLight');
+// Optional so the app still loads in Expo Go (module absent -> null); the dev
+// client provides the real native module. Callers must null-check.
+export default requireOptionalNativeModule<CovariateLightModule>('CovariateLight');

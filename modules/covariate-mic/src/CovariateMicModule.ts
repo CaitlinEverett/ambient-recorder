@@ -1,4 +1,4 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { NativeModule, requireOptionalNativeModule } from 'expo';
 import type { CovariateMicModuleEvents } from './CovariateMic.types';
 
 declare class CovariateMicModule extends NativeModule<CovariateMicModuleEvents> {
@@ -9,4 +9,6 @@ declare class CovariateMicModule extends NativeModule<CovariateMicModuleEvents> 
   stop(): void;
 }
 
-export default requireNativeModule<CovariateMicModule>('CovariateMic');
+// Optional so the app still loads in Expo Go (module absent -> null); the dev
+// client provides the real native module. Callers must null-check.
+export default requireOptionalNativeModule<CovariateMicModule>('CovariateMic');
