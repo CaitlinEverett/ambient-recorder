@@ -12,6 +12,7 @@ import { runHealthCheck, ChannelCheck } from './src/health';
 import HomeScreen from './src/HomeScreen';
 import { Experiment, createExperiment, listExperiments } from './src/experiments';
 import { SavedSession, listSessions } from './src/sessions';
+import { runCalibration, saveBaseline, Baseline } from './src/calibrate';
 
 // Covariate MVP — runs in Expo Go (accel/mag/baro) or a dev client (all 5).
 // Records a session, then exports it as schema-v0.1.1 JSON (docs/schema.md) via
@@ -53,6 +54,9 @@ export default function App() {
   const [screen, setScreen] = useState<'home' | 'record'>('home');
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [sessions, setSessions] = useState<SavedSession[]>([]);
+  const [calibrating, setCalibrating] = useState(false);
+  const [calibRemaining, setCalibRemaining] = useState(0);
+  const [baseline, setBaseline] = useState<Baseline | null>(null);
 
   const subs = useRef<{ remove: () => void }[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -176,9 +180,26 @@ export default function App() {
     }
   }
 
+  async function runCalibrate() {
+    setBaseline(null);
+    setCalibrating(true);
+    const secs = 20;
+    setCalibRemaining(secs);
+    const iv = setInterval(() => setCalibRemaining((r) => Math.max(0, r - 1)), 1000);
+    try {
+      const b = await runCalibration({ seconds: secs, experimentID: experimentID.trim() || 'session' });
+      await saveBaseline(b);
+      setBaseline(b);
+      refreshHome();
+    } finally {
+      clearInterval(iv);
+      setCalibrating(false);
+    }
+  }
+
   function clearAll() {
     setExperimentID(''); setCondition('controlled'); setSite(''); setNotes(''); setLocationOn(false);
-    setLastExport(null); setExportError(null); setHealthChecks(null);
+    setLastExport(null); setExportError(null); setHealthChecks(null); setBaseline(null);
     setElapsed(0); setCounts({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0 });
     setAccel({ x: 0, y: 0, z: 0 }); setMag({ x: 0, y: 0, z: 0 });
     setPressure(NaN); setAltitude(NaN); setBrightness(NaN); setDBFS(NaN);
@@ -297,6 +318,28 @@ export default function App() {
                     <Text style={styles.healthDetail}>{h.detail}</Text>
                   </View>
                 ))}
+              </View>
+            )}
+            <Pressable onPress={runCalibrate} disabled={calibrating} style={styles.checkBtn}>
+              <Text style={styles.checkBtnText}>
+                {calibrating ? `calibrating… hold still · ${calibRemaining}s` : '⚖ Calibrate baseline (20 s at rest)'}
+              </Text>
+            </Pressable>
+            {baseline && (
+              <View style={styles.healthPanel}>
+                {baseline.channels.map((b) => {
+                  const short = b.channel === 'accelerometer' ? 'accel' : b.channel === 'magnetometer' ? 'mag' : 'baro';
+                  const unit = b.channel === 'barometer' ? 'hPa' : b.channel === 'magnetometer' ? 'µT' : 'g';
+                  const md = b.channel === 'barometer' ? 2 : 3;
+                  return (
+                    <View key={b.channel} style={styles.healthRow}>
+                      <Text style={styles.healthCh}>{short}</Text>
+                      <Text style={styles.healthDetail}>
+                        bias {Number.isFinite(b.mean) ? b.mean.toFixed(md) : '—'} {unit} · noise ±{Number.isFinite(b.noiseFloor) ? b.noiseFloor.toFixed(4) : '—'}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </View>

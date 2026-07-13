@@ -14,7 +14,7 @@ export async function listSessions(): Promise<SavedSession[]> {
   try {
     const names = await FileSystem.readDirectoryAsync(dir);
     return names
-      .filter((n) => n.startsWith('covariate_') && n.endsWith('.json'))
+      .filter((n) => n.startsWith('covariate_') && n.endsWith('.json') && !n.startsWith('covariate_baseline_'))
       .sort() // filenames carry an ISO timestamp -> lexical sort is chronological
       .reverse() // newest first
       .map((name) => ({ name, uri: dir + name }));
