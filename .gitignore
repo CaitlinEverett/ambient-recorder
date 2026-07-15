@@ -1,17 +1,44 @@
-# Xcode / Swift
-*.xcodeproj
-xcuserdata/
-DerivedData/
-.build/
-*.ipa
-*.dSYM.zip
-*.dSYM
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# XcodeGen generates the project; only project.yml is source of truth
-!project.yml
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 
 # macOS
 .DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
 
 # Python (analysis/)
 __pycache__/

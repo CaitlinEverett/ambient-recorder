@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "covariate-mvp",
+    "slug": "covariate-mvp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Covariate reads camera-frame brightness metadata to measure ambient light. No photos or video are captured or stored.",
+        "NSMicrophoneUsageDescription": "Covariate measures ambient sound level as a single loudness number. Raw audio is never recorded or stored.",
+        "NSLocationWhenInUseUsageDescription": "Covariate records a coarse one-time location (region and altitude) at session start to contextualize sensor readings. Precise coordinates are not stored."
+      },
+      "bundleIdentifier": "com.anonymous.covariate-mvp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
