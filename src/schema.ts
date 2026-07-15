@@ -9,6 +9,7 @@ export type ChannelId =
   | 'magnetometer'
   | 'light'
   | 'micLevel'
+  | 'vibration' // derived from accelerometer — windowed RMS with gravity removed
   | 'external';
 
 /** One reading from one channel. `t` = seconds since session anchor (monotonic). */
@@ -65,5 +66,6 @@ export const NOMINAL_RATE: Record<ChannelId, number | null> = {
   barometer: null,
   light: 5,
   micLevel: 10,
+  vibration: 5, // 200 ms window
   external: null,
 };

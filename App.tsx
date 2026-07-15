@@ -6,6 +6,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import CovariateLightModule from './modules/covariate-light/src/CovariateLightModule';
 import CovariateMicModule from './modules/covariate-mic/src/CovariateMicModule';
 import { SessionRecorder, exportRecord, shareUri } from './src/recorder';
+import { VibrationMeter } from './src/vibration';
 import { getCoarseLocation } from './src/location';
 import { LocationFix } from './src/schema';
 import HomeScreen from './src/HomeScreen';
@@ -36,7 +37,8 @@ export default function App() {
   const [lightOk, setLightOk] = useState<boolean | null>(hasLight ? null : false);
   const [dBFS, setDBFS] = useState<number>(NaN);
   const [micOk, setMicOk] = useState<boolean | null>(hasMic ? null : false);
-  const [counts, setCounts] = useState({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0 });
+  const [vibRms, setVibRms] = useState<number>(NaN);
+  const [counts, setCounts] = useState({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 });
 
   // Session metadata (schema meta).
   const [experimentID, setExperimentID] = useState('');
@@ -54,8 +56,9 @@ export default function App() {
 
   const subs = useRef<{ remove: () => void }[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const c = useRef({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0 });
+  const c = useRef({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 });
   const rec = useRef(new SessionRecorder());
+  const vibMeter = useRef<VibrationMeter | null>(null);
   const locationRef = useRef<LocationFix | null>(null);
 
   useEffect(() => {
@@ -68,12 +71,13 @@ export default function App() {
   }, []);
 
   async function start() {
-    c.current = { accel: 0, mag: 0, baro: 0, light: 0, mic: 0 };
+    c.current = { accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 };
     setCounts({ ...c.current });
     setElapsed(0);
     setLastExport(null);
     setExportError(null);
     rec.current.start();
+    vibMeter.current = new VibrationMeter(200); // 200ms window -> matches NOMINAL_RATE.vibration (5 Hz)
     // Capture location in the BACKGROUND — never block sensor start on the GPS fix.
     locationRef.current = null;
     if (locationOn) {
@@ -89,6 +93,11 @@ export default function App() {
     subs.current = [
       Accelerometer.addListener((d) => {
         c.current.accel++; setAccel(d); rec.current.ingest('accelerometer', [d.x, d.y, d.z]);
+        const v = vibMeter.current?.push(d.x, d.y, d.z);
+        if (v) {
+          c.current.vibration++; setVibRms(v.rms);
+          rec.current.ingest('vibration', [v.rms, v.peak]);
+        }
       }),
       Magnetometer.addListener((d) => {
         c.current.mag++; setMag(d); rec.current.ingest('magnetometer', [d.x, d.y, d.z]);
@@ -167,10 +176,11 @@ export default function App() {
     // Fresh session under the SAME experiment — keeps experimentID.
     setCondition('controlled'); setSite(''); setNotes(''); setLocationOn(false);
     setLastExport(null); setExportError(null);
-    setElapsed(0); setCounts({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0 });
+    setElapsed(0); setCounts({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 });
     setAccel({ x: 0, y: 0, z: 0 }); setMag({ x: 0, y: 0, z: 0 });
-    setPressure(NaN); setAltitude(NaN); setBrightness(NaN); setDBFS(NaN);
+    setPressure(NaN); setAltitude(NaN); setBrightness(NaN); setDBFS(NaN); setVibRms(NaN);
     rec.current = new SessionRecorder();
+    vibMeter.current = null;
   }
 
   async function refreshHome() {
@@ -209,6 +219,7 @@ export default function App() {
     ['baro', baroOk === false ? 'unavailable' : `${fmt(pressure, 2)}  ·  Δalt ${fmt(altitude, 1)}m`, 'hPa', counts.baro],
     ['light', nativeVal(hasLight, lightOk, fmt(brightness, 2)), 'EV', counts.light],
     ['mic', nativeVal(hasMic, micOk, fmt(dBFS, 1)), 'dBFS', counts.mic],
+    ['vib', fmt(vibRms, 3), 'g RMS', counts.vibration],
   ];
 
   const canStart = experimentID.trim().length > 0;
