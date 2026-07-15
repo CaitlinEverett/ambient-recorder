@@ -6,14 +6,14 @@
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
 import * as FileSystem from 'expo-file-system/legacy';
 import { VibrationMeter } from './vibration';
+import { ChannelId } from './schema';
 
 export interface ChannelBaseline {
-  channel: string;
+  channel: ChannelId;
   n: number;
   mean: number; // mean magnitude (accel g, mag µT, baro hPa)
   noiseFloor: number; // std of magnitude
   rate: number; // Hz
-  derivedFrom?: string; // set when this isn't its own sensor — computed from another channel's raw stream
 }
 
 export interface Baseline {
@@ -58,9 +58,9 @@ export async function runCalibration(opts: { seconds?: number; experimentID: str
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
   subs.forEach((s) => s.remove());
 
-  const mk = (channel: string, vals: number[], derivedFrom?: string): ChannelBaseline => {
+  const mk = (channel: ChannelId, vals: number[]): ChannelBaseline => {
     const { mean, std } = stats(vals);
-    return { channel, n: vals.length, mean, noiseFloor: std, rate: vals.length / seconds, derivedFrom };
+    return { channel, n: vals.length, mean, noiseFloor: std, rate: vals.length / seconds };
   };
 
   return {
@@ -69,12 +69,7 @@ export async function runCalibration(opts: { seconds?: number; experimentID: str
     experimentID: opts.experimentID,
     durationS: seconds,
     capturedAt: new Date().toISOString(),
-    channels: [
-      mk('accelerometer', aMags),
-      mk('vibration', vRms, 'accelerometer'),
-      mk('magnetometer', mMags),
-      mk('barometer', pVals),
-    ],
+    channels: [mk('accelerometer', aMags), mk('vibration', vRms), mk('magnetometer', mMags), mk('barometer', pVals)],
   };
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { runHealthCheck, ChannelCheck } from './health';
 import { runCalibration, saveBaseline, Baseline } from './calibrate';
+import { CHANNEL_BY_ID, describeDerivation } from './channels';
 import CovariateLightModule from '../modules/covariate-light/src/CovariateLightModule';
 import CovariateMicModule from '../modules/covariate-mic/src/CovariateMicModule';
 
@@ -52,17 +53,27 @@ export default function SensorTools({ experimentID = 'device' }: { experimentID?
       </Pressable>
       {healthChecks && (
         <View style={styles.panel}>
-          {healthChecks.map((h) => (
-            <View key={h.channel} style={[styles.row, h.derivedFrom && styles.derivedRow]}>
-              {h.derivedFrom ? (
-                <Text style={styles.derivedArrow}>↳</Text>
-              ) : (
-                <Text style={[styles.dot, { color: h.status === 'ok' ? '#7fd8b0' : h.status === 'warn' ? '#e0b070' : '#e08a7a' }]}>●</Text>
-              )}
-              <Text style={[styles.ch, h.derivedFrom && styles.chDerived]}>{h.channel}</Text>
-              <Text style={styles.detail}>{h.detail}</Text>
-            </View>
-          ))}
+          {healthChecks.map((h) => {
+            const def = CHANNEL_BY_ID[h.channel];
+            const derived = def?.kind === 'derived';
+            const method = def ? describeDerivation(def) : null;
+            return (
+              <View key={h.channel} style={[styles.row, derived && styles.derivedRow]}>
+                {derived ? (
+                  <Text style={styles.derivedArrow}>↳</Text>
+                ) : (
+                  <Text style={[styles.dot, { color: h.status === 'ok' ? '#7fd8b0' : h.status === 'warn' ? '#e0b070' : '#e08a7a' }]}>●</Text>
+                )}
+                <View style={styles.rowBody}>
+                  <View style={styles.rowLine}>
+                    <Text style={[styles.ch, derived && styles.chDerived]}>{def?.label ?? h.channel}</Text>
+                    <Text style={styles.detail}>{h.detail}</Text>
+                  </View>
+                  {method && <Text style={styles.method}>{method}</Text>}
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
       <Pressable onPress={runCalibrate} disabled={calibrating} style={styles.btn}>
@@ -73,16 +84,23 @@ export default function SensorTools({ experimentID = 'device' }: { experimentID?
       {baseline && (
         <View style={styles.panel}>
           {baseline.channels.map((b) => {
-            const short = b.channel === 'accelerometer' ? 'accel' : b.channel === 'magnetometer' ? 'mag' : b.channel === 'barometer' ? 'baro' : 'vib';
-            const unit = b.channel === 'barometer' ? 'hPa' : b.channel === 'magnetometer' ? 'µT' : b.channel === 'vibration' ? 'g RMS' : 'g';
-            const md = b.channel === 'barometer' ? 2 : 3;
+            const def = CHANNEL_BY_ID[b.channel];
+            const derived = def?.kind === 'derived';
+            const unit = def?.unit ?? '';
+            const md = def?.decimals ?? 3;
+            const method = def ? describeDerivation(def) : null;
             return (
-              <View key={b.channel} style={[styles.row, b.derivedFrom && styles.derivedRow]}>
-                {b.derivedFrom && <Text style={styles.derivedArrow}>↳</Text>}
-                <Text style={[styles.ch, b.derivedFrom && styles.chDerived]}>{short}</Text>
-                <Text style={styles.detail}>
-                  bias {Number.isFinite(b.mean) ? b.mean.toFixed(md) : '—'} {unit} · noise ±{Number.isFinite(b.noiseFloor) ? b.noiseFloor.toFixed(4) : '—'}
-                </Text>
+              <View key={b.channel} style={[styles.row, derived && styles.derivedRow]}>
+                {derived && <Text style={styles.derivedArrow}>↳</Text>}
+                <View style={styles.rowBody}>
+                  <View style={styles.rowLine}>
+                    <Text style={[styles.ch, derived && styles.chDerived]}>{def?.label ?? b.channel}</Text>
+                    <Text style={styles.detail}>
+                      bias {Number.isFinite(b.mean) ? b.mean.toFixed(md) : '—'} {unit} · noise ±{Number.isFinite(b.noiseFloor) ? b.noiseFloor.toFixed(4) : '—'}
+                    </Text>
+                  </View>
+                  {method && <Text style={styles.method}>{method}</Text>}
+                </View>
               </View>
             );
           })}
@@ -101,7 +119,10 @@ const styles = StyleSheet.create({
   derivedRow: { paddingLeft: 26, paddingVertical: 5 },
   dot: { fontSize: 12 },
   derivedArrow: { width: 12, color: '#5b616e', fontSize: 12 },
+  rowBody: { flex: 1 },
+  rowLine: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   ch: { width: 46, color: '#e9ebf0', fontSize: 13, fontWeight: '600', fontFamily: 'Menlo' },
   chDerived: { color: '#9aa1ad', fontWeight: '500' },
   detail: { flex: 1, color: '#9aa1ad', fontSize: 12.5 },
+  method: { color: '#5b616e', fontSize: 10.5, fontStyle: 'italic', marginTop: 2 },
 });
