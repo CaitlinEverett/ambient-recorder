@@ -5,6 +5,7 @@
 
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
 import * as FileSystem from 'expo-file-system/legacy';
+import { VibrationMeter } from './vibration';
 
 export interface ChannelBaseline {
   channel: string;
@@ -12,6 +13,7 @@ export interface ChannelBaseline {
   mean: number; // mean magnitude (accel g, mag µT, baro hPa)
   noiseFloor: number; // std of magnitude
   rate: number; // Hz
+  derivedFrom?: string; // set when this isn't its own sensor — computed from another channel's raw stream
 }
 
 export interface Baseline {
@@ -38,21 +40,27 @@ export async function runCalibration(opts: { seconds?: number; experimentID: str
   const aMags: number[] = [];
   const mMags: number[] = [];
   const pVals: number[] = [];
+  const vRms: number[] = [];
+  const vMeter = new VibrationMeter(200); // same window as the live 'vibration' channel
 
   try { await Accelerometer.requestPermissionsAsync(); } catch {}
   Accelerometer.setUpdateInterval(20);
   Magnetometer.setUpdateInterval(40);
   const subs = [
-    Accelerometer.addListener((d) => aMags.push(mag3(d.x, d.y, d.z))),
+    Accelerometer.addListener((d) => {
+      aMags.push(mag3(d.x, d.y, d.z));
+      const v = vMeter.push(d.x, d.y, d.z);
+      if (v) vRms.push(v.rms);
+    }),
     Magnetometer.addListener((d) => mMags.push(mag3(d.x, d.y, d.z))),
     Barometer.addListener((d: any) => pVals.push(d.pressure)),
   ];
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
   subs.forEach((s) => s.remove());
 
-  const mk = (channel: string, vals: number[]): ChannelBaseline => {
+  const mk = (channel: string, vals: number[], derivedFrom?: string): ChannelBaseline => {
     const { mean, std } = stats(vals);
-    return { channel, n: vals.length, mean, noiseFloor: std, rate: vals.length / seconds };
+    return { channel, n: vals.length, mean, noiseFloor: std, rate: vals.length / seconds, derivedFrom };
   };
 
   return {
@@ -61,7 +69,12 @@ export async function runCalibration(opts: { seconds?: number; experimentID: str
     experimentID: opts.experimentID,
     durationS: seconds,
     capturedAt: new Date().toISOString(),
-    channels: [mk('accelerometer', aMags), mk('magnetometer', mMags), mk('barometer', pVals)],
+    channels: [
+      mk('accelerometer', aMags),
+      mk('vibration', vRms, 'accelerometer'),
+      mk('magnetometer', mMags),
+      mk('barometer', pVals),
+    ],
   };
 }
 

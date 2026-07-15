@@ -53,9 +53,13 @@ export default function SensorTools({ experimentID = 'device' }: { experimentID?
       {healthChecks && (
         <View style={styles.panel}>
           {healthChecks.map((h) => (
-            <View key={h.channel} style={styles.row}>
-              <Text style={[styles.dot, { color: h.status === 'ok' ? '#7fd8b0' : h.status === 'warn' ? '#e0b070' : '#e08a7a' }]}>●</Text>
-              <Text style={styles.ch}>{h.channel}</Text>
+            <View key={h.channel} style={[styles.row, h.derivedFrom && styles.derivedRow]}>
+              {h.derivedFrom ? (
+                <Text style={styles.derivedArrow}>↳</Text>
+              ) : (
+                <Text style={[styles.dot, { color: h.status === 'ok' ? '#7fd8b0' : h.status === 'warn' ? '#e0b070' : '#e08a7a' }]}>●</Text>
+              )}
+              <Text style={[styles.ch, h.derivedFrom && styles.chDerived]}>{h.channel}</Text>
               <Text style={styles.detail}>{h.detail}</Text>
             </View>
           ))}
@@ -69,12 +73,13 @@ export default function SensorTools({ experimentID = 'device' }: { experimentID?
       {baseline && (
         <View style={styles.panel}>
           {baseline.channels.map((b) => {
-            const short = b.channel === 'accelerometer' ? 'accel' : b.channel === 'magnetometer' ? 'mag' : 'baro';
-            const unit = b.channel === 'barometer' ? 'hPa' : b.channel === 'magnetometer' ? 'µT' : 'g';
+            const short = b.channel === 'accelerometer' ? 'accel' : b.channel === 'magnetometer' ? 'mag' : b.channel === 'barometer' ? 'baro' : 'vib';
+            const unit = b.channel === 'barometer' ? 'hPa' : b.channel === 'magnetometer' ? 'µT' : b.channel === 'vibration' ? 'g RMS' : 'g';
             const md = b.channel === 'barometer' ? 2 : 3;
             return (
-              <View key={b.channel} style={styles.row}>
-                <Text style={styles.ch}>{short}</Text>
+              <View key={b.channel} style={[styles.row, b.derivedFrom && styles.derivedRow]}>
+                {b.derivedFrom && <Text style={styles.derivedArrow}>↳</Text>}
+                <Text style={[styles.ch, b.derivedFrom && styles.chDerived]}>{short}</Text>
                 <Text style={styles.detail}>
                   bias {Number.isFinite(b.mean) ? b.mean.toFixed(md) : '—'} {unit} · noise ±{Number.isFinite(b.noiseFloor) ? b.noiseFloor.toFixed(4) : '—'}
                 </Text>
@@ -93,7 +98,10 @@ const styles = StyleSheet.create({
   btnText: { color: ACCENT, fontSize: 14, fontWeight: '600' },
   panel: { backgroundColor: '#161a1f', borderRadius: 12, borderWidth: 1, borderColor: '#23262d', paddingVertical: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 12 },
+  derivedRow: { paddingLeft: 26, paddingVertical: 5 },
   dot: { fontSize: 12 },
+  derivedArrow: { width: 12, color: '#5b616e', fontSize: 12 },
   ch: { width: 46, color: '#e9ebf0', fontSize: 13, fontWeight: '600', fontFamily: 'Menlo' },
+  chDerived: { color: '#9aa1ad', fontWeight: '500' },
   detail: { flex: 1, color: '#9aa1ad', fontSize: 12.5 },
 });

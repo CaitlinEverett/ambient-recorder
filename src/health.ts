@@ -4,12 +4,14 @@
 // light/mic are reported from module presence (deep-checked in the dev client).
 
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
+import { VibrationMeter, VibrationSample } from './vibration';
 
 export type HealthStatus = 'ok' | 'warn' | 'fail';
 export interface ChannelCheck {
   channel: string;
   status: HealthStatus;
   detail: string;
+  derivedFrom?: string; // set when this isn't its own sensor — computed from another channel's raw stream
 }
 
 const mag3 = (x: number, y: number, z: number) => Math.sqrt(x * x + y * y + z * z);
@@ -24,12 +26,18 @@ export async function runHealthCheck(opts: {
   // TS closure-narrowing pitfall and is all the sane-check needs.
   let aMag = NaN, mMag = NaN, pLast = NaN;
   let aN = 0, mN = 0, pN = 0;
+  const vMeter = new VibrationMeter(200); // same window as the live 'vibration' channel
+  const vibWindows: VibrationSample[] = [];
 
   try { await Accelerometer.requestPermissionsAsync(); } catch {}
   Accelerometer.setUpdateInterval(20);
   Magnetometer.setUpdateInterval(40);
   const subs = [
-    Accelerometer.addListener((d) => { aMag = mag3(d.x, d.y, d.z); aN++; }),
+    Accelerometer.addListener((d) => {
+      aMag = mag3(d.x, d.y, d.z); aN++;
+      const v = vMeter.push(d.x, d.y, d.z);
+      if (v) vibWindows.push(v);
+    }),
     Magnetometer.addListener((d) => { mMag = mag3(d.x, d.y, d.z); mN++; }),
     Barometer.addListener((d: any) => { pLast = d.pressure; pN++; }),
   ];
@@ -49,6 +57,25 @@ export async function runHealthCheck(opts: {
       channel: 'accel',
       status: rate >= 25 && sane ? 'ok' : 'warn',
       detail: `${rate.toFixed(0)} Hz · |a| ${aMag.toFixed(2)} g${sane ? '' : ' — expect ≈1 g at rest'}`,
+    });
+  }
+
+  // Vibration — not its own sensor: derived from the accelerometer stream above, so
+  // presence just tracks accel. What's worth checking is that windows are actually
+  // closing at the expected 5 Hz and that at-rest RMS is small (a high floor here
+  // usually means the phone is being handled/jostled, not that anything's broken).
+  if (aN === 0) {
+    out.push({ channel: 'vib', derivedFrom: 'accel', status: 'fail', detail: 'no accel data — derived channel unavailable' });
+  } else {
+    const expectedWindows = Math.floor(ms / 200);
+    const gotWindows = vibWindows.length;
+    const meanRms = gotWindows > 0 ? vibWindows.reduce((a, w) => a + w.rms, 0) / gotWindows : NaN;
+    const sane = Number.isFinite(meanRms) && meanRms < 0.05;
+    out.push({
+      channel: 'vib',
+      derivedFrom: 'accel',
+      status: gotWindows >= expectedWindows - 1 && sane ? 'ok' : 'warn',
+      detail: `${gotWindows}/${expectedWindows} windows · rest RMS ${meanRms.toFixed(3)} g${sane ? '' : ' — expect ≈0 at rest'}`,
     });
   }
 
