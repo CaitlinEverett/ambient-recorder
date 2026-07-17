@@ -9,6 +9,7 @@
 import * as Device from 'expo-device';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { saveSession, getSessionJson } from './db';
 import {
   ChannelHealth,
   ChannelId,
@@ -102,20 +103,33 @@ export class SessionRecorder {
   }
 }
 
-/** Write a record to a JSON file in Documents and open the share sheet. */
-export async function exportRecord(record: SessionRecord): Promise<{ uri: string; name: string }> {
-  const safeId = (record.meta.experimentID || 'session').replace(/[^\w.-]+/g, '_');
-  const stamp = record.meta.startedAtWall.replace(/[:.]/g, '-');
-  const name = `covariate_${safeId}_${stamp}.json`;
-  const uri = (FileSystem.documentDirectory ?? '') + name;
-  await FileSystem.writeAsStringAsync(uri, JSON.stringify(record, null, 2));
-  // Writes only — sharing is triggered separately by a user tap (presenting the
-  // iOS share sheet from an explicit gesture avoids the blank/hung-sheet issue).
-  return { uri, name };
+/** Persist a completed record to SQLite (replaces the old write-JSON-file-to-Documents step). */
+export async function exportRecord(record: SessionRecord): Promise<{ id: string; name: string }> {
+  return saveSession(record);
 }
 
-export async function shareUri(uri: string): Promise<void> {
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Covariate session' });
+/**
+ * Pull a session's JSON back out of SQLite, write it to a *temporary* cache
+ * file just long enough to hand off to the OS share sheet (Mail is one of
+ * the options there, same as before), then delete the temp file.
+ *
+ * Note: on iOS, Sharing.shareAsync's promise resolves once the share sheet
+ * is dismissed, so the delete-in-finally below is safe there. On Android the
+ * share intent can return before the target app has finished reading the
+ * file; if you ever see blank/missing attachments on Android specifically,
+ * switch the delete to a short delay (e.g. a few seconds) instead of an
+ * immediate post-await cleanup.
+ */
+export async function shareSession(id: string, name: string): Promise<void> {
+  const json = await getSessionJson(id);
+  if (!json) throw new Error(`Session ${id} not found`);
+  const uri = (FileSystem.cacheDirectory ?? '') + name;
+  await FileSystem.writeAsStringAsync(uri, json);
+  try {
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Covariate session' });
+    }
+  } finally {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
   }
 }
