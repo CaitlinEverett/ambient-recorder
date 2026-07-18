@@ -5,7 +5,7 @@ import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import CovariateLightModule from './modules/covariate-light/src/CovariateLightModule';
 import CovariateMicModule from './modules/covariate-mic/src/CovariateMicModule';
-import { SessionRecorder, exportRecord, shareUri } from './src/recorder';
+import { SessionRecorder, exportRecord, shareSession } from './src/recorder';
 import { VibrationMeter } from './src/vibration';
 import { getCoarseLocation } from './src/location';
 import { ChannelId, LocationFix } from './src/schema';
@@ -52,7 +52,7 @@ export default function App() {
   const [locationOn, setLocationOn] = useState(false);
 
   const [exporting, setExporting] = useState(false);
-  const [lastExport, setLastExport] = useState<{ uri: string; name: string; count: number } | null>(null);
+  const [lastExport, setLastExport] = useState<{ id: string; name: string; count: number } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [screen, setScreen] = useState<'home' | 'record'>('home');
   const [experiments, setExperiments] = useState<Experiment[]>([]);
@@ -176,8 +176,8 @@ export default function App() {
     const record = rec.current.build({ experimentID: experimentID.trim(), condition, site: site.trim(), notes: notes.trim(), location: locationRef.current });
     setExporting(true);
     try {
-      const { uri, name } = await exportRecord(record);
-      setLastExport({ uri, name, count: record.samples.length });
+      const { id, name } = await exportRecord(record);
+      setLastExport({ id, name, count: record.samples.length });
       refreshHome();
     } catch (e) {
       setExportError(e instanceof Error ? e.message : String(e));
@@ -273,7 +273,7 @@ export default function App() {
         onCreate={handleCreate}
         onPick={openExperiment}
         onDelete={handleDeleteExperiment}
-        onShare={(uri) => shareUri(uri)}
+        onShare={(id, name) => shareSession(id, name)}
       />
     );
   }
@@ -382,7 +382,7 @@ export default function App() {
           <Text style={[styles.foot, { color: '#e08a7a' }]}>export failed: {exportError}</Text>
         )}
         {!exporting && lastExport && (
-          <Pressable style={styles.exportRow} onPress={() => shareUri(lastExport.uri)}>
+          <Pressable style={styles.exportRow} onPress={() => shareSession(lastExport.id, lastExport.name)}>
             <Text style={styles.exportText}>✓ saved · {lastExport.count.toLocaleString()} samples</Text>
             <Text style={styles.exportSub}>{lastExport.name}  ·  tap to share</Text>
           </Pressable>

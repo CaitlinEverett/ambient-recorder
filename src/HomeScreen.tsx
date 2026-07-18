@@ -13,7 +13,7 @@ export default function HomeScreen(props: {
   onCreate: (name: string) => void;
   onPick: (exp: Experiment) => void;
   onDelete: (exp: Experiment) => void;
-  onShare: (uri: string) => void;
+  onShare: (id: string, name: string) => void;
 }) {
   const { experiments, sessions, onCreate, onPick, onDelete, onShare } = props;
   const [newName, setNewName] = useState('');
@@ -64,9 +64,9 @@ export default function HomeScreen(props: {
         <View style={styles.card}>
           {sessions.length === 0 && <Text style={styles.empty}>No exported sessions yet.</Text>}
           {sessions.slice(0, 15).map((s) => (
-            <Pressable key={s.uri} onPress={() => onShare(s.uri)} style={styles.sessRow}>
+            <Pressable key={s.id} onPress={() => onShare(s.id, `${s.id}.json`)} style={styles.sessRow}>
               <Text style={styles.sessName} numberOfLines={1}>
-                {s.name.replace('covariate_', '').replace('.json', '')}
+                {s.id.replace('covariate_', '')}
               </Text>
               <Text style={styles.sessShare}>share</Text>
             </Pressable>
