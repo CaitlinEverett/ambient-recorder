@@ -54,3 +54,11 @@ export async function updateExperiment(id: string, patch: Partial<Experiment>): 
   await AsyncStorage.setItem(KEY, JSON.stringify(next));
   return next;
 }
+
+/** Removes the experiment definition only — any sessions already recorded under it are untouched. */
+export async function deleteExperiment(id: string): Promise<Experiment[]> {
+  const all = await listExperiments();
+  const next = all.filter((e) => e.id !== id);
+  await AsyncStorage.setItem(KEY, JSON.stringify(next));
+  return next;
+}

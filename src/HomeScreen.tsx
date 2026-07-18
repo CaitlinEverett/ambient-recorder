@@ -12,9 +12,10 @@ export default function HomeScreen(props: {
   sessions: SavedSession[];
   onCreate: (name: string) => void;
   onPick: (exp: Experiment) => void;
+  onDelete: (exp: Experiment) => void;
   onShare: (uri: string) => void;
 }) {
-  const { experiments, sessions, onCreate, onPick, onShare } = props;
+  const { experiments, sessions, onCreate, onPick, onDelete, onShare } = props;
   const [newName, setNewName] = useState('');
 
   return (
@@ -44,13 +45,18 @@ export default function HomeScreen(props: {
             <Text style={styles.empty}>No experiments yet — create one to start a session.</Text>
           )}
           {experiments.map((e) => (
-            <Pressable key={e.id} onPress={() => onPick(e)} style={styles.expRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.expName}>{e.name}</Text>
-                {!!e.notes && <Text style={styles.expNotes} numberOfLines={1}>{e.notes}</Text>}
-              </View>
-              <Text style={styles.expGo}>▶ session</Text>
-            </Pressable>
+            <View key={e.id} style={styles.expRow}>
+              <Pressable onPress={() => onPick(e)} style={styles.expMain}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.expName}>{e.name}</Text>
+                  {!!e.notes && <Text style={styles.expNotes} numberOfLines={1}>{e.notes}</Text>}
+                </View>
+                <Text style={styles.expGo}>▶ session</Text>
+              </Pressable>
+              <Pressable onPress={() => onDelete(e)} style={styles.expDelete} hitSlop={8}>
+                <Text style={styles.expDeleteText}>✕</Text>
+              </Pressable>
+            </View>
           ))}
         </View>
 
@@ -86,7 +92,10 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: ACCENT, borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
   addBtnText: { color: '#08121a', fontSize: 14, fontWeight: '700' },
   empty: { color: '#5b616e', fontSize: 13, padding: 12 },
-  expRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: '#23262d' },
+  expRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#23262d' },
+  expMain: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingLeft: 12 },
+  expDelete: { paddingVertical: 12, paddingHorizontal: 14 },
+  expDeleteText: { color: '#5b616e', fontSize: 15, fontWeight: '600' },
   expName: { color: '#e9ebf0', fontSize: 15, fontWeight: '600' },
   expNotes: { color: '#9aa1ad', fontSize: 12.5, marginTop: 2 },
   expGo: { color: ACCENT, fontSize: 13, fontWeight: '600' },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -11,7 +11,7 @@ import { getCoarseLocation } from './src/location';
 import { ChannelId, LocationFix } from './src/schema';
 import { DEFAULT_ENABLED_CHANNELS } from './src/channels';
 import HomeScreen from './src/HomeScreen';
-import { Experiment, createExperiment, listExperiments, updateExperiment } from './src/experiments';
+import { Experiment, createExperiment, listExperiments, updateExperiment, deleteExperiment } from './src/experiments';
 import { SavedSession, listSessions } from './src/sessions';
 import SensorTools from './src/SensorTools';
 import ChannelToggles from './src/ChannelToggles';
@@ -208,6 +208,24 @@ export default function App() {
     openExperiment(exp);
   }
 
+  function handleDeleteExperiment(exp: Experiment) {
+    Alert.alert(
+      'Delete experiment?',
+      `"${exp.name}" will be removed. Sessions already recorded under it aren't affected.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteExperiment(exp.id);
+            setExperiments((prev) => prev.filter((e) => e.id !== exp.id));
+          },
+        },
+      ]
+    );
+  }
+
   function openExperiment(exp: Experiment) {
     setExperiment(exp);
     setExperimentID(exp.name);
@@ -254,6 +272,7 @@ export default function App() {
         sessions={sessions}
         onCreate={handleCreate}
         onPick={openExperiment}
+        onDelete={handleDeleteExperiment}
         onShare={(uri) => shareUri(uri)}
       />
     );
