@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import CovariateLightModule from './modules/covariate-light/src/CovariateLightModule';
 import CovariateMicModule from './modules/covariate-mic/src/CovariateMicModule';
-import { SessionRecorder, exportRecord, shareUri } from './src/recorder';
+import { SessionRecorder, exportRecord, shareSession } from './src/recorder';
 import { VibrationMeter } from './src/vibration';
 import { getCoarseLocation } from './src/location';
-import { LocationFix } from './src/schema';
+import { ChannelId, LocationFix } from './src/schema';
+import { DEFAULT_ENABLED_CHANNELS } from './src/channels';
 import HomeScreen from './src/HomeScreen';
-import { Experiment, createExperiment, listExperiments } from './src/experiments';
+import { Experiment, createExperiment, listExperiments, updateExperiment, deleteExperiment } from './src/experiments';
 import { SavedSession, listSessions } from './src/sessions';
 import SensorTools from './src/SensorTools';
+import ChannelToggles from './src/ChannelToggles';
 import Accordion from './src/Accordion';
 
 // Covariate MVP — runs in Expo Go (accel/mag/baro) or a dev client (all 5).
@@ -40,6 +42,8 @@ export default function App() {
   const [vibRms, setVibRms] = useState<number>(NaN);
   const [counts, setCounts] = useState({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 });
 
+  const [experiment, setExperiment] = useState<Experiment | null>(null);
+
   // Session metadata (schema meta).
   const [experimentID, setExperimentID] = useState('');
   const [condition, setCondition] = useState<'controlled' | 'disturbed'>('controlled');
@@ -48,7 +52,7 @@ export default function App() {
   const [locationOn, setLocationOn] = useState(false);
 
   const [exporting, setExporting] = useState(false);
-  const [lastExport, setLastExport] = useState<{ uri: string; name: string; count: number } | null>(null);
+  const [lastExport, setLastExport] = useState<{ id: string; name: string; count: number } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [screen, setScreen] = useState<'home' | 'record'>('home');
   const [experiments, setExperiments] = useState<Experiment[]>([]);
@@ -71,13 +75,14 @@ export default function App() {
   }, []);
 
   async function start() {
+    const enabled = new Set(experiment?.enabledChannels ?? DEFAULT_ENABLED_CHANNELS);
     c.current = { accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 };
     setCounts({ ...c.current });
     setElapsed(0);
     setLastExport(null);
     setExportError(null);
     rec.current.start();
-    vibMeter.current = new VibrationMeter(200); // 200ms window -> matches NOMINAL_RATE.vibration (5 Hz)
+    vibMeter.current = enabled.has('vibration') ? new VibrationMeter(200) : null; // 200ms window -> matches NOMINAL_RATE.vibration (5 Hz)
     // Capture location in the BACKGROUND — never block sensor start on the GPS fix.
     locationRef.current = null;
     if (locationOn) {
@@ -86,33 +91,42 @@ export default function App() {
         .catch(() => { locationRef.current = null; });
     }
 
-    try { await Accelerometer.requestPermissionsAsync(); } catch {}
-    Accelerometer.setUpdateInterval(20); // ~50 Hz
-    Magnetometer.setUpdateInterval(40);  // ~25 Hz
+    subs.current = [];
 
-    subs.current = [
-      Accelerometer.addListener((d) => {
+    // Vibration rides on the accelerometer stream, so it can't run without it —
+    // the ChannelToggles UI already enforces that, this just mirrors the same rule.
+    if (enabled.has('accelerometer')) {
+      try { await Accelerometer.requestPermissionsAsync(); } catch {}
+      Accelerometer.setUpdateInterval(20); // ~50 Hz
+      subs.current.push(Accelerometer.addListener((d) => {
         c.current.accel++; setAccel(d); rec.current.ingest('accelerometer', [d.x, d.y, d.z]);
         const v = vibMeter.current?.push(d.x, d.y, d.z);
         if (v) {
           c.current.vibration++; setVibRms(v.rms);
           rec.current.ingest('vibration', [v.rms, v.peak]);
         }
-      }),
-      Magnetometer.addListener((d) => {
+      }));
+    }
+
+    if (enabled.has('magnetometer')) {
+      Magnetometer.setUpdateInterval(40); // ~25 Hz
+      subs.current.push(Magnetometer.addListener((d) => {
         c.current.mag++; setMag(d); rec.current.ingest('magnetometer', [d.x, d.y, d.z]);
-      }),
-      Barometer.addListener((d: any) => {
+      }));
+    }
+
+    if (enabled.has('barometer')) {
+      subs.current.push(Barometer.addListener((d: any) => {
         c.current.baro++;
         setPressure(d.pressure);
         const alt = typeof d.relativeAltitude === 'number' ? d.relativeAltitude : 0;
         if (typeof d.relativeAltitude === 'number') setAltitude(d.relativeAltitude);
         rec.current.ingest('barometer', [d.pressure, alt]);
-      }),
-    ];
+      }));
+    }
 
     // Native modules — dev client only. In Expo Go these are null and skipped.
-    if (CovariateLightModule) {
+    if (CovariateLightModule && enabled.has('light')) {
       try {
         const perm = await CovariateLightModule.requestPermissionsAsync();
         if (perm.granted) {
@@ -125,7 +139,7 @@ export default function App() {
       } catch { setLightOk(false); }
     }
 
-    if (CovariateMicModule) {
+    if (CovariateMicModule && enabled.has('micLevel')) {
       try {
         const perm = await CovariateMicModule.requestPermissionsAsync();
         if (perm.granted) {
@@ -162,8 +176,8 @@ export default function App() {
     const record = rec.current.build({ experimentID: experimentID.trim(), condition, site: site.trim(), notes: notes.trim(), location: locationRef.current });
     setExporting(true);
     try {
-      const { uri, name } = await exportRecord(record);
-      setLastExport({ uri, name, count: record.samples.length });
+      const { id, name } = await exportRecord(record);
+      setLastExport({ id, name, count: record.samples.length });
       refreshHome();
     } catch (e) {
       setExportError(e instanceof Error ? e.message : String(e));
@@ -194,11 +208,36 @@ export default function App() {
     openExperiment(exp);
   }
 
+  function handleDeleteExperiment(exp: Experiment) {
+    Alert.alert(
+      'Delete experiment?',
+      `"${exp.name}" will be removed. Sessions already recorded under it aren't affected.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteExperiment(exp.id);
+            setExperiments((prev) => prev.filter((e) => e.id !== exp.id));
+          },
+        },
+      ]
+    );
+  }
+
   function openExperiment(exp: Experiment) {
+    setExperiment(exp);
     setExperimentID(exp.name);
     setLastExport(null);
     setExportError(null);
     setScreen('record');
+  }
+
+  async function handleToggleChannels(next: ChannelId[]) {
+    if (!experiment) return;
+    setExperiment({ ...experiment, enabledChannels: next });
+    await updateExperiment(experiment.id, { enabledChannels: next });
   }
 
   function goHome() {
@@ -213,14 +252,16 @@ export default function App() {
   const nativeVal = (has: boolean, ok: boolean | null, live: string) =>
     !has ? 'dev build' : ok === false ? 'unavailable' : live;
 
-  const rows: [string, string, string, number][] = [
-    ['accel', `${fmt(accel.x)}  ${fmt(accel.y)}  ${fmt(accel.z)}`, 'g', counts.accel],
-    ['mag', `${fmt(mag.x, 1)}  ${fmt(mag.y, 1)}  ${fmt(mag.z, 1)}`, 'µT', counts.mag],
-    ['baro', baroOk === false ? 'unavailable' : `${fmt(pressure, 2)}  ·  Δalt ${fmt(altitude, 1)}m`, 'hPa', counts.baro],
-    ['light', nativeVal(hasLight, lightOk, fmt(brightness, 2)), 'EV', counts.light],
-    ['mic', nativeVal(hasMic, micOk, fmt(dBFS, 1)), 'dBFS', counts.mic],
-    ['vib', fmt(vibRms, 3), 'g RMS', counts.vibration],
+  const enabledChannels = new Set(experiment?.enabledChannels ?? DEFAULT_ENABLED_CHANNELS);
+  const allRows: [ChannelId, string, string, string, number][] = [
+    ['accelerometer', 'accel', `${fmt(accel.x)}  ${fmt(accel.y)}  ${fmt(accel.z)}`, 'g', counts.accel],
+    ['magnetometer', 'mag', `${fmt(mag.x, 1)}  ${fmt(mag.y, 1)}  ${fmt(mag.z, 1)}`, 'µT', counts.mag],
+    ['barometer', 'baro', baroOk === false ? 'unavailable' : `${fmt(pressure, 2)}  ·  Δalt ${fmt(altitude, 1)}m`, 'hPa', counts.baro],
+    ['light', 'light', nativeVal(hasLight, lightOk, fmt(brightness, 2)), 'EV', counts.light],
+    ['micLevel', 'mic', nativeVal(hasMic, micOk, fmt(dBFS, 1)), 'dBFS', counts.mic],
+    ['vibration', 'vib', fmt(vibRms, 3), 'g RMS', counts.vibration],
   ];
+  const rows = allRows.filter(([id]) => enabledChannels.has(id));
 
   const canStart = experimentID.trim().length > 0;
 
@@ -231,7 +272,8 @@ export default function App() {
         sessions={sessions}
         onCreate={handleCreate}
         onPick={openExperiment}
-        onShare={(uri) => shareUri(uri)}
+        onDelete={handleDeleteExperiment}
+        onShare={(id, name) => shareSession(id, name)}
       />
     );
   }
@@ -280,6 +322,12 @@ export default function App() {
         )}
 
         {!recording && (
+          <Accordion title="sensors — choose what to record">
+            <ChannelToggles enabled={experiment?.enabledChannels ?? DEFAULT_ENABLED_CHANNELS} onChange={handleToggleChannels} />
+          </Accordion>
+        )}
+
+        {!recording && (
           <Accordion title="sensor tools — check · calibrate">
             <SensorTools experimentID={experimentID} />
           </Accordion>
@@ -296,8 +344,8 @@ export default function App() {
             <Text style={[styles.val, styles.dim]}>value</Text>
             <Text style={[styles.n, styles.dim]}>n / rate</Text>
           </View>
-          {rows.map(([ch, val, unit, n]) => (
-            <View key={ch} style={styles.row}>
+          {rows.map(([id, ch, val, unit, n]) => (
+            <View key={id} style={styles.row}>
               <Text style={styles.ch}>{ch}</Text>
               <View style={styles.val}>
                 <Text style={styles.valText}>{val}</Text>
@@ -334,7 +382,7 @@ export default function App() {
           <Text style={[styles.foot, { color: '#e08a7a' }]}>export failed: {exportError}</Text>
         )}
         {!exporting && lastExport && (
-          <Pressable style={styles.exportRow} onPress={() => shareUri(lastExport.uri)}>
+          <Pressable style={styles.exportRow} onPress={() => shareSession(lastExport.id, lastExport.name)}>
             <Text style={styles.exportText}>✓ saved · {lastExport.count.toLocaleString()} samples</Text>
             <Text style={styles.exportSub}>{lastExport.name}  ·  tap to share</Text>
           </Pressable>

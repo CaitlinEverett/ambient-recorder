@@ -1,23 +1,15 @@
-// Saved sessions — lists the exported JSON files in Documents, newest first, so
-// the home screen can show recent runs and re-share them.
+// Saved sessions — lists sessions out of SQLite, newest first, so the home
+// screen can show recent runs and re-share/email them. (Previously scanned
+// exported JSON files in Documents; now reads the sessions table instead —
+// see src/db.ts.)
 
-import * as FileSystem from 'expo-file-system/legacy';
+import { listSessions as listSessionRows, SessionRow } from './db';
 
-export interface SavedSession {
-  name: string;
-  uri: string;
-}
+export type SavedSession = SessionRow;
 
 export async function listSessions(): Promise<SavedSession[]> {
-  const dir = FileSystem.documentDirectory;
-  if (!dir) return [];
   try {
-    const names = await FileSystem.readDirectoryAsync(dir);
-    return names
-      .filter((n) => n.startsWith('covariate_') && n.endsWith('.json') && !n.startsWith('covariate_baseline_'))
-      .sort() // filenames carry an ISO timestamp -> lexical sort is chronological
-      .reverse() // newest first
-      .map((name) => ({ name, uri: dir + name }));
+    return await listSessionRows();
   } catch {
     return [];
   }
