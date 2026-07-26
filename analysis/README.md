@@ -57,6 +57,40 @@ The harness is a simulation with an invented noise structure. It verifies that
 the code runs and that the estimators recover a known slope. It is not evidence
 about the physical system, and no result from it belongs in the paper.
 
+## regimes.py — the other five analysis regimes
+
+`events.py` covers one regime: did a discrete thing happen, and how big was it.
+`regimes.py` adds spectral, periodicity, stability, blind detection,
+classification, and external-reference validation. Protocols that feed them are
+P5-P11 in `../../Protocols_Analysis_Regimes.md`.
+
+    python regimes.py path/to/session.json     # every regime the session supports
+    python test_regimes.py                     # 15 ground-truth checks
+
+**Everything in regimes.py is EXPLORATORY** with respect to `docs/prereg.md`,
+whose confirmatory family (H1/H3a/H4/H5) was fixed in advance and admits nothing
+afterwards. Report these results labelled as exploratory, or promote one by dated
+addendum written before the data it governs is collected.
+
+`test_regimes.py` plants known values and requires them back: a 7 Hz tone, a
+0.30 s decay, a 300 s / 40%-duty compressor cycle, textbook Allan slopes of -0.5
+and +0.5, 8 unlabelled events, three event classes separable only by frequency and
+decay, and a 21.7 hPa barometric offset implying 180 m. Run it after any change.
+
+### Two traps it exists to catch
+
+**Never take a spectrum of acceleration magnitude.** A flat phone holds ~1 g on z,
+so a vibration `s` along x gives `|a| = sqrt(s^2+1) ~= 1 + s^2/2` — the motion
+enters squared, and squaring a sinusoid doubles its frequency. A real 7 Hz
+vibration reads as 14 Hz, with a clean-looking sharp peak. `regimes.py` works per
+axis and sums the spectra; the test asserts 7 Hz in, 7 Hz out. `events.py`'s
+`accel_excess_series` is both a magnitude and rectified, which is fine there
+because detection only asks "how far from rest", never "at what frequency".
+
+**Nyquist is 25 Hz.** 60 Hz machinery folds to 10 Hz and its second harmonic to
+20 Hz, both inside the band and both looking real. `spectral_peaks()` flags peaks
+near those frequencies and declines to name them.
+
 ## reliability.py — H2 metric definitions
 
 Pearson r, bias, and noise floor for cross-device agreement. Alignment against
