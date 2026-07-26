@@ -47,6 +47,7 @@ MAG_PRE_MEDIAN = 10.0     # PREREG §2.4
 EVENT_REFINE_WINDOW = 2.0     # PREREG §2.2 — ±2 s around the noted clock time
 FIDUCIAL_SEARCH = 30.0        # PREREG §2.2 — fiducials live in the first 30 s
 FIDUCIAL_MIN_GAP, FIDUCIAL_MAX_GAP = 0.5, 2.0   # PREREG §2.2
+FIDUCIAL_REL_FLOOR = 0.15     # a tap must reach 15% of the largest impulse present
 FLOOR_WINDOW = 1.0        # PREREG §2.4 — baseline floor computed on 1 s windows
 FLOOR_FIDUCIAL_GUARD = 2.0    # PREREG §2.4 — floor windows avoid fiducials by 2 s
 O1_DROP_GATE = 0.02       # PREREG §O1
@@ -156,9 +157,15 @@ def find_fiducials(sess: Session, search: float = FIDUCIAL_SEARCH) -> list[float
     # few large impulses don't inflate the very statistic meant to detect them.
     med = float(np.median(ex))
     mad = float(np.median(np.abs(ex - med))) or 1e-9
+    # Two floors, and a peak must clear BOTH. The MAD term asks "is this unusual
+    # for this record"; the relative term asks "is this the same order of thing
+    # as the largest impulse present". The MAD term alone is not enough: where
+    # the background is very quiet its scale collapses, 6*MAD lands a few parts
+    # per million above the median, and ordinary noise crosses it dozens of times
+    # — which then out-votes the real tap burst below.
     thresh = med + 6.0 * 1.4826 * mad
 
-    peaks: list[float] = []
+    peaks: list[tuple[float, float]] = []   # (time, amplitude)
     i = 0
     while i < len(t):
         if ex[i] < thresh:
@@ -167,19 +174,37 @@ def find_fiducials(sess: Session, search: float = FIDUCIAL_SEARCH) -> list[float
         j = i
         while j + 1 < len(t) and t[j + 1] - t[i] < FIDUCIAL_MIN_GAP:
             j += 1
-        peaks.append(float(t[i + int(np.argmax(ex[i:j + 1]))]))
+        k = i + int(np.argmax(ex[i:j + 1]))
+        peaks.append((float(t[k]), float(ex[k])))
         i = j + 1
 
-    # Keep the longest run whose spacing sits inside the frozen tap interval.
-    best: list[float] = []
-    run: list[float] = []
-    for p in peaks:
-        if run and not (FIDUCIAL_MIN_GAP <= p - run[-1] <= FIDUCIAL_MAX_GAP):
-            if len(run) > len(best):
-                best = run
+    # Second floor, anchored to the MEDIAN peak rather than the largest. Where
+    # the background is very quiet the MAD scale collapses and ordinary noise
+    # crosses 6*MAD dozens of times; anchoring to the median peak drops those
+    # without also dropping a modest tap that happens to share a session with a
+    # door slam eighty times its size — which anchoring to the maximum does.
+    if peaks:
+        m = float(np.median([a for _, a in peaks]))
+        peaks = [(tm, a) for tm, a in peaks if a >= FIDUCIAL_REL_FLOOR * m]
+
+    # Group into runs whose spacing sits inside the frozen tap interval, then
+    # keep the run with the most total amplitude — not the longest. A long chain
+    # of small crossings is exactly what noise produces; a sync burst is a few
+    # large ones, and summed amplitude is what tells them apart.
+    runs: list[list[tuple[float, float]]] = []
+    run: list[tuple[float, float]] = []
+    for pk in peaks:
+        if run and not (FIDUCIAL_MIN_GAP <= pk[0] - run[-1][0] <= FIDUCIAL_MAX_GAP):
+            runs.append(run)
             run = []
-        run.append(p)
-    return run if len(run) > len(best) else best
+        run.append(pk)
+    if run:
+        runs.append(run)
+    runs = [r for r in runs if len(r) >= 2]
+    if not runs:
+        return []
+    best = max(runs, key=lambda r: sum(a for _, a in r))
+    return [tm for tm, _ in best]
 
 
 # --- metrics (PREREG §2.4) ---------------------------------------------------

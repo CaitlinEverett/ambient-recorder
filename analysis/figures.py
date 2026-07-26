@@ -164,3 +164,69 @@ if __name__ == "__main__":
     os.makedirs("figures", exist_ok=True)
     print("rendering:")
     fig_metrics(); fig_derived(); fig_fiducial()
+
+
+# --- Fig 4 — the design card that replaces filming the pendulum --------------
+# Not a chart: a diagram plus a small table. Per the form heuristic, the job here
+# is "explain a design", and a bar chart of impact energy would be decoration.
+
+def fig_design():
+    import matplotlib.patches as mp
+    fig = plt.figure(figsize=(12.6, 6.2))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1, 1.15], wspace=.18)
+    ax = fig.add_subplot(gs[0, 0]); ax.set_aspect("equal"); ax.axis("off")
+    ax.set_xlim(-1.25, 1.05); ax.set_ylim(-1.42, .62)
+
+    px, py, L = 0, 0, 1.0
+    ax.plot([-.55, .55], [.06, .06], color=INK2, lw=4, solid_capstyle="round")
+    ax.text(-.55, .14, "doorframe / shelf edge", ha="left", fontsize=12, color=INK2)
+    ax.add_patch(mp.Arc((px, py), 2 * L, 2 * L, theta1=209, theta2=270,
+                        color=AQUA, lw=1.6, ls=(0, (4, 3))))
+    for ang, col, alpha in [(75, ORANGE, 1.0), (45, ORANGE, .45), (15, ORANGE, .28)]:
+        a = np.radians(ang)
+        x, y = -L * np.sin(a), -L * np.cos(a)
+        ax.plot([px, x], [py, y], color=INK2, lw=1.3, alpha=alpha)
+        ax.add_patch(plt.Circle((x, y), .085, color=col, alpha=alpha, zorder=3))
+        ax.text(x - .13, y - .02, f"{ang}°", ha="right", va="center",
+                fontsize=12.5, color=INK2, alpha=max(alpha, .6))
+    ax.plot([px, 0], [py, -L], color=INK2, lw=1.3)
+    ax.add_patch(plt.Circle((0, -L), .085, color=BLUE, zorder=4))
+    ax.text(.15, -L + .17, "0.40 kg", fontsize=12.5, color=INK2, va="center")
+    ax.annotate("", xy=(-.045, -.55), xytext=(-.045, -.03),
+                arrowprops=dict(arrowstyle="<->", color=INK2, lw=1.1))
+    ax.text(-.10, -.3, "L = 0.50 m", fontsize=12.5, color=INK2, ha="right", va="center")
+    ax.plot([-.62, .45], [-L - .10, -L - .10], color=INK2, lw=3, solid_capstyle="round")
+    ax.add_patch(mp.FancyBboxPatch((.44, -L - .055), .30, .11, boxstyle="round,pad=.01",
+                                   facecolor=BLUE, edgecolor="none", alpha=.30))
+    ax.text(.59, -L - .20, "phone,\nmarked position", ha="center", va="top",
+            fontsize=11.5, color=INK2)
+    ax.text(-.15, .50, "$E = m\\,g\\,L\\,(1-\\cos\\theta)$", ha="center",
+            fontsize=18, color=INK)
+
+    ax2 = fig.add_subplot(gs[0, 1]); ax2.axis("off")
+    rows = [(a, 0.40 * 9.80665 * 0.50 * (1 - np.cos(np.radians(a))))
+            for a in (15, 30, 45, 60, 75)]
+    ax2.text(0, 1.0, "Five levels, six trials each, randomised order",
+             fontsize=15.5, fontweight="bold", color=INK, va="top")
+    ax2.text(0, .90, "n = 6 because an exact permutation test at n = 2\n"
+                     "cannot return a p below 0.167 — the pilot design\n"
+                     "could not have reached significance on any data.",
+             fontsize=12.5, color=INK2, va="top")
+    y = .655
+    ax2.text(.02, y + .075, "release angle", fontsize=12.5, color=INK2)
+    ax2.text(.40, y + .075, "impact energy", fontsize=12.5, color=INK2)
+    for a, e in rows:
+        ax2.add_patch(mp.Rectangle((.40, y - .012), .34 * (e / rows[-1][1]), .038,
+                                   facecolor=ORANGE, alpha=.8, edgecolor="none",
+                                   transform=ax2.transAxes))
+        ax2.text(.06, y, f"{a}°", fontsize=14, color=INK)
+        ax2.text(1.0, y, f"{e:.3f} J", fontsize=13.5, color=INK2, ha="right")
+        y -= .105
+    ax2.text(0, .06, "22× range, mechanically fixed — replacing "
+                     "“close it hard”,\nwhich varied 3.9× between two trials.",
+             fontsize=13, color=INK, va="top")
+    ax2.set_xlim(0, 1); ax2.set_ylim(0, 1.05)
+
+    fig.suptitle("Next: replacing a human adjective with a calibrated dose",
+                 fontsize=18, fontweight="bold", y=1.01)
+    save(fig, "fig4_pendulum_design")
