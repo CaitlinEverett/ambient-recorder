@@ -292,3 +292,26 @@ Stated in advance, so the paper can be honest either way:
 ## Addenda
 
 *(Append dated, signed amendments below this line. Never edit above it.)*
+
+### Addendum 1 — 2026-07-26
+
+**H2 scope note superseded.** §3 H2 recorded, at freezing, that only one device
+reliably ran the app. A second device (an iPad) is now available at the Chicago
+site, with a third and possibly fourth to follow, so H2 moves from *untested* to
+*testable at one site with heterogeneous devices*.
+
+This is a better H2 design than the original two-devices-two-cities plan: holding
+the room constant is the only way to attribute disagreement to the devices rather
+than to the building. Nothing about H2's metrics or thresholds changes — Pearson
+r >= 0.9 on the resampled common grid, bias within the larger noise floor,
+alignment by physical fiducial. The analysis is `analysis/reliability.py`.
+
+Prediction added, before any dual-device data is collected: **the raw
+accelerometer will pass H2 and the derived `vibration` channel will not.** Each
+device runs an independent 200 ms window clock, so two devices should disagree
+about a windowed statistic more than about the motion under it. On synthetic
+two-device data the raw accelerometer reaches r = 0.998 and vibration r = 0.86.
+If that holds on real devices, the channel that wins on sensitivity is the one
+that loses on cross-device agreement, and both belong in the results.
+
+Nothing above the addendum line was edited.
