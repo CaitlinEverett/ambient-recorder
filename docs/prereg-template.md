@@ -1,3 +1,8 @@
+> **SUPERSEDED 2026-07-26 by `prereg.md`, which is the frozen, operative
+> pre-registration.** This template is retained unedited as the record of
+> what was planned before reviewer feedback restructured H3 and before the
+> Week-2 pilot generated H4 and H5. Do not collect against this file.
+
 # Pre-registration — H1-H3 (freeze before ANY study data is collected)
 
 Status: TEMPLATE — due Wed Jul 22 (Caitlin), committed before calibration runs.

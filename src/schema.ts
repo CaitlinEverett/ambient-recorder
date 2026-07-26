@@ -1,7 +1,7 @@
-// Export schema v0.1.1 — mirrors docs/schema.md (the cross-platform contract).
+// Export schema v0.1.3 — mirrors docs/schema.md (the cross-platform contract).
 // One session -> one JSON file: covariate_<experimentID>_<ISO8601>.json.
 
-export const SCHEMA_VERSION = '0.1.1';
+export const SCHEMA_VERSION = '0.1.3';
 
 export type ChannelId =
   | 'barometer'
@@ -10,7 +10,8 @@ export type ChannelId =
   | 'light'
   | 'micLevel'
   | 'vibration' // derived from accelerometer — windowed RMS with gravity removed
-  | 'external';
+  | 'external'
+  | 'sync'; // cross-device alignment marker — one sample per emitted sync pulse
 
 /** One reading from one channel. `t` = seconds since session anchor (monotonic). */
 export interface Sample {
@@ -50,6 +51,13 @@ export interface SessionMeta {
   startedAtWall: string; // ISO 8601
   endedAtWall: string;
   notes: string;
+  /**
+   * v0.1.3, optional. Where the phone physically sat — surface, material, and
+   * what it rests on. Placement changes the coupling between an event and the
+   * accelerometer by more than some dose steps do, so a session without it is
+   * not comparable to one recorded elsewhere.
+   */
+  placement?: string;
   location?: LocationFix; // v0.1.1, optional; present only when the user opts in
 }
 
@@ -68,4 +76,8 @@ export const NOMINAL_RATE: Record<ChannelId, number | null> = {
   micLevel: 10,
   vibration: 5, // 200 ms window
   external: null,
+  // Event-driven: emitted only when the operator marks a sync pulse. A
+  // nominal rate here would be wrong — it would make dropFraction, which is
+  // derived from expected-vs-actual count, meaningless for this channel.
+  sync: null,
 };

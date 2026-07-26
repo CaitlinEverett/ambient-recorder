@@ -1,5 +1,5 @@
 // SessionRecorder — buffers every sample in memory, tracks per-channel health,
-// and assembles a schema-v0.1.1 SessionRecord on stop. Port of the Swift
+// and assembles a schema-v0.1.3 SessionRecord on stop. Port of the Swift
 // RecordingSession/SessionRecord/Exporter (see the covariate-ios-native archive).
 //
 // Scope note: samples buffer in memory and are written once on stop, same as the
@@ -81,7 +81,7 @@ export class SessionRecorder {
       .sort((a, b) => a.channel.localeCompare(b.channel));
   }
 
-  build(input: { experimentID: string; condition: string; site: string; notes: string; location?: LocationFix | null }): SessionRecord {
+  build(input: { experimentID: string; condition: string; site: string; notes: string; placement?: string; location?: LocationFix | null }): SessionRecord {
     return {
       meta: {
         schemaVersion: SCHEMA_VERSION,
@@ -89,6 +89,7 @@ export class SessionRecorder {
         condition: input.condition,
         site: input.site,
         notes: input.notes,
+        placement: input.placement?.trim() ? input.placement.trim() : undefined,
         location: input.location ?? undefined,
         device: Device.modelName ?? 'unknown',
         osVersion: `${Device.osName ?? ''} ${Device.osVersion ?? ''}`.trim(),

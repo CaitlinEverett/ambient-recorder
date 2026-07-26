@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -17,10 +17,17 @@ import Accordion from './src/Accordion';
 
 // Covariate MVP — runs in Expo Go (accel/mag/baro) or a dev client (all 5).
 // Home lists experiments + sessions + device sensor tools; the record screen
-// (this component) records a session and exports schema-v0.1.1 JSON.
+// (this component) records a session and exports schema-v0.1.3 JSON.
 
 type Vec = { x: number; y: number; z: number };
 const ACCENT = '#4fb3c4';
+// Sync pulses are spaced a full second apart on purpose. Three raps inside a
+// few hundred ms collapse into one 200 ms vibration window and read as a
+// single impulse — the Week-2 pilot tapped three and could only recover one.
+// One second also sits far outside the duration of any single impact, so the
+// pattern stays separable from the events it is meant to bracket.
+const SYNC_PULSE_MS = 1000;
+const SYNC_PULSE_COUNT = 3;
 const fmt = (n: number, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : '—');
 const hasLight = CovariateLightModule != null;
 const hasMic = CovariateMicModule != null;
@@ -39,11 +46,13 @@ export default function App() {
   const [micOk, setMicOk] = useState<boolean | null>(hasMic ? null : false);
   const [vibRms, setVibRms] = useState<number>(NaN);
   const [counts, setCounts] = useState({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 });
+  const [syncMarks, setSyncMarks] = useState(0);
 
   // Session metadata (schema meta).
   const [experimentID, setExperimentID] = useState('');
   const [condition, setCondition] = useState<'controlled' | 'disturbed'>('controlled');
   const [site, setSite] = useState('');
+  const [placement, setPlacement] = useState('');
   const [notes, setNotes] = useState('');
   const [locationOn, setLocationOn] = useState(false);
 
@@ -60,6 +69,7 @@ export default function App() {
   const rec = useRef(new SessionRecorder());
   const vibMeter = useRef<VibrationMeter | null>(null);
   const locationRef = useRef<LocationFix | null>(null);
+  const syncTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     Barometer.isAvailableAsync().then(setBaroOk).catch(() => setBaroOk(false));
@@ -77,6 +87,7 @@ export default function App() {
     setLastExport(null);
     setExportError(null);
     rec.current.start();
+    setSyncMarks(0);
     vibMeter.current = new VibrationMeter(200); // 200ms window -> matches NOMINAL_RATE.vibration (5 Hz)
     // Capture location in the BACKGROUND — never block sensor start on the GPS fix.
     locationRef.current = null;
@@ -147,7 +158,38 @@ export default function App() {
     setRecording(true);
   }
 
+  /**
+   * Emit the cross-device alignment fiducial: a coded burst of haptic pulses,
+   * logged to the `sync` channel as each one fires.
+   *
+   * The point is that the marker is PHYSICAL. A button that only wrote a
+   * timestamp would be useless for alignment — `Sample.t` is monotonic from
+   * each phone's own recording start, so two phones' timestamps share no
+   * origin. Driving the vibration motor produces an event that every phone on
+   * the same surface observes through its own accelerometer, while the
+   * emitting phone also records exactly when it fired. That gives one device
+   * ground truth and the others a signal to cross-correlate against.
+   */
+  function markSync() {
+    if (!recording) return;
+    syncTimers.current.forEach(clearTimeout);
+    syncTimers.current = [];
+    for (let i = 0; i < SYNC_PULSE_COUNT; i++) {
+      syncTimers.current.push(
+        setTimeout(() => {
+          Vibration.vibrate();
+          // Ingest AFTER firing, so `t` is the moment the pulse was emitted
+          // rather than the moment it was scheduled.
+          rec.current.ingest('sync', [i + 1, SYNC_PULSE_COUNT]);
+          setSyncMarks((n) => n + 1);
+        }, i * SYNC_PULSE_MS),
+      );
+    }
+  }
+
   function stopSensors() {
+    syncTimers.current.forEach(clearTimeout);
+    syncTimers.current = [];
     subs.current.forEach((s) => s.remove());
     subs.current = [];
     if (timer.current) { clearInterval(timer.current); timer.current = null; }
@@ -159,7 +201,7 @@ export default function App() {
 
   async function stopAndExport() {
     stopSensors();
-    const record = rec.current.build({ experimentID: experimentID.trim(), condition, site: site.trim(), notes: notes.trim(), location: locationRef.current });
+    const record = rec.current.build({ experimentID: experimentID.trim(), condition, site: site.trim(), notes: notes.trim(), placement: placement.trim(), location: locationRef.current });
     setExporting(true);
     try {
       const { uri, name } = await exportRecord(record);
@@ -173,8 +215,11 @@ export default function App() {
   }
 
   function clearAll() {
-    // Fresh session under the SAME experiment — keeps experimentID.
+    // Fresh session under the SAME experiment — keeps experimentID, and keeps
+    // `placement`: the phone has not moved between trials in a block, and
+    // silently blanking it would drop a field the next session still needs.
     setCondition('controlled'); setSite(''); setNotes(''); setLocationOn(false);
+    setSyncMarks(0);
     setLastExport(null); setExportError(null);
     setElapsed(0); setCounts({ accel: 0, mag: 0, baro: 0, light: 0, mic: 0, vibration: 0 });
     setAccel({ x: 0, y: 0, z: 0 }); setMag({ x: 0, y: 0, z: 0 });
@@ -260,11 +305,16 @@ export default function App() {
         </View>
 
         {!recording && (
-          <Accordion title="details — site · notes · location">
+          <Accordion title="details — site · placement · notes · location">
             <TextInput
               style={styles.input} value={site} onChangeText={setSite}
               placeholder="Site (e.g. chicago-kitchen)" placeholderTextColor="#5b616e"
               autoCapitalize="none" autoCorrect={false}
+            />
+            <TextInput
+              style={styles.input} value={placement} onChangeText={setPlacement}
+              placeholder="Placement (e.g. oak benchtop, 30cm from impact)"
+              placeholderTextColor="#5b616e"
             />
             <TextInput
               style={styles.input} value={notes} onChangeText={setNotes}
@@ -323,6 +373,14 @@ export default function App() {
           <Text style={styles.btnText}>{recording ? '■  Stop & export' : '▶  Start recording'}</Text>
         </Pressable>
 
+        {recording && (
+          <Pressable onPress={markSync} style={styles.syncBtn}>
+            <Text style={styles.syncBtnText}>
+              ⌁  Mark sync{syncMarks > 0 ? `  ·  ${syncMarks} pulse${syncMarks === 1 ? '' : 's'}` : ''}
+            </Text>
+          </Pressable>
+        )}
+
         {!recording && (
           <Pressable onPress={clearAll} style={styles.clearBtn}>
             <Text style={styles.clearBtnText}>↺  Start over</Text>
@@ -372,6 +430,8 @@ const styles = StyleSheet.create({
   btn: { borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   btnDisabled: { opacity: 0.4 },
   btnText: { color: '#08121a', fontSize: 17, fontWeight: '700' },
+  syncBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1, borderColor: ACCENT },
+  syncBtnText: { color: ACCENT, fontSize: 15, fontWeight: '700' },
   clearBtn: { alignItems: 'center', paddingVertical: 6 },
   clearBtnText: { color: '#9aa1ad', fontSize: 14, fontWeight: '600' },
   homeBack: { paddingBottom: 2 },

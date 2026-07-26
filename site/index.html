@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Covariate — measuring the room so experiments reproduce</title>
+<meta name="description" content="A commodity smartphone as an ambient-context recorder for experimental reproducibility. Log the invisible variables — pressure, vibration, light, magnetic field, sound level — and recover reproducibility." />
+<style>
+  :root{
+    --bg:#ffffff; --fg:#16181d; --muted:#5b616e; --line:#e7e9ee;
+    --card:#f7f8fa; --accent:#1c7c8c; --accent-fg:#ffffff;
+    --maxw:940px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0e1013; --fg:#e9ebf0; --muted:#9aa1ad; --line:#23262d;
+           --card:#161a1f; --accent:#4fb3c4; --accent-fg:#08121a; }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  header{border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{font-weight:700;letter-spacing:-.01em}
+  .brand span{color:var(--accent)}
+  nav a{color:var(--muted);margin-left:20px;font-size:14px}
+  .hero{padding:88px 0 64px}
+  .hero h1{font-size:clamp(32px,6vw,52px);line-height:1.05;letter-spacing:-.02em;margin:0 0 18px;max-width:16ch}
+  .hero p.lead{font-size:clamp(17px,2.4vw,21px);color:var(--muted);max-width:60ch;margin:0 0 28px}
+  .btn{display:inline-block;background:var(--accent);color:var(--accent-fg);padding:12px 20px;
+    border-radius:10px;font-weight:600;font-size:15px}
+  .btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+  .btn+.btn{margin-left:10px}
+  section{padding:56px 0;border-top:1px solid var(--line)}
+  h2{font-size:clamp(22px,3.4vw,30px);letter-spacing:-.01em;margin:0 0 8px}
+  .sub{color:var(--muted);margin:0 0 28px;max-width:62ch}
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  .kicker{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:0 0 10px}
+  .hyp{display:grid;gap:14px}
+  .hyp .row{display:grid;grid-template-columns:64px 1fr;gap:16px;align-items:start;
+    padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .hyp .tag{font-weight:800;color:var(--accent);font-size:15px}
+  .hyp .row p{margin:4px 0 0;color:var(--muted);font-size:14.5px}
+  .steps{counter-reset:s;display:grid;gap:12px;margin:18px 0 0;padding:0;list-style:none}
+  .steps li{counter-increment:s;padding-left:44px;position:relative;color:var(--muted)}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:-2px;width:28px;height:28px;
+    display:grid;place-items:center;background:var(--accent);color:var(--accent-fg);border-radius:8px;font-weight:700;font-size:14px}
+  .steps b{color:var(--fg)}
+  .note{font-size:13.5px;color:var(--muted);border-left:3px solid var(--accent);padding:6px 0 6px 14px;margin-top:18px}
+  footer{border-top:1px solid var(--line);padding:36px 0;color:var(--muted);font-size:14px}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between}
+  .pill{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand">Co<span>variate</span></div>
+  <nav>
+    <a href="#problem">Problem</a>
+    <a href="#approach">Approach</a>
+    <a href="#study">Study</a>
+    <a href="#app">Get the app</a>
+  </nav>
+</div></header>
+
+<div class="wrap">
+  <section class="hero" style="border-top:none">
+    <p class="kicker">Ambient covariate sensing · reproducibility</p>
+    <h1>Measuring the room so experiments reproduce.</h1>
+    <p class="lead">When an experiment won't replicate, the cause is often the room, not the protocol —
+      a door left open, the HVAC cycling, a shift in temperature or light that no one wrote down.
+      Covariate turns a commodity smartphone into a passive recorder of those invisible variables,
+      then tests a sharp claim: <b>that logging them is enough to explain — and correct — why the same
+      experiment gives different answers in different places.</b></p>
+    <a class="btn" href="#study">Read the study →</a>
+    <a class="btn ghost" href="#app">Get the beta</a>
+  </section>
+
+  <section id="problem">
+    <p class="kicker">The problem</p>
+    <h2>Reproducibility failures are often unlogged environmental variance.</h2>
+    <p class="sub">Over 70% of surveyed researchers have failed to reproduce another's experiment, and more than
+      half their own. When three labs ran <em>identical</em> mouse protocols with apparatus rigorously matched,
+      they still saw systematic, lab-specific differences — evidence that conditions no protocol records can
+      change an outcome. Those conditions are cheap to measure. Almost no one measures them.</p>
+  </section>
+
+  <section id="approach">
+    <p class="kicker">The approach</p>
+    <h2>Five sensors, one clock, tied to a specific experiment.</h2>
+    <p class="sub">The phone logs the ambient context passively while your experiment runs, and exports a
+      timestamped record you can attach to a result. It is built to be trustworthy enough to be metadata.</p>
+    <div class="grid">
+      <div class="card"><h3>Barometer</h3><p>Air pressure &amp; relative altitude — weather fronts, HVAC, a door opening.</p></div>
+      <div class="card"><h3>Accelerometer</h3><p>Bench vibration — foot traffic, a centrifuge next door, a bump.</p></div>
+      <div class="card"><h3>Magnetometer</h3><p>Magnetic field — motors and appliances switching on.</p></div>
+      <div class="card"><h3>Light</h3><p>Ambient brightness — lights toggled, daylight, someone walking past.</p></div>
+      <div class="card"><h3>Sound level</h3><p>Loudness only — <b>never audio.</b> An RMS number, computed and discarded in place.</p></div>
+      <div class="card"><h3>External (optional)</h3><p>An ESP32 + BME280 add-on for temperature &amp; humidity the phone can't sense.</p></div>
+    </div>
+    <p class="note"><b>Privacy by construction.</b> The microphone yields a single loudness number and nothing
+      that could contain speech. The camera reads only a brightness value; no photos or video are stored.</p>
+  </section>
+
+  <section id="study">
+    <p class="kicker">The study</p>
+    <h2>Covariate-adjusted reproducibility, with a known-physics anchor.</h2>
+    <p class="sub">We run a cheap, standardized assay — effervescent-tablet dissolution time, whose temperature
+      dependence is physically known (rate roughly doubles per 10&nbsp;°C) — across kitchens, times, and
+      controlled-vs-disturbed conditions, logging ambient context throughout. The known physics is our internal
+      check: the phone's covariate should predict the outcome shift the way theory says it must.</p>
+    <div class="hyp">
+      <div class="row"><div class="tag">H1</div><div><b>Context sensitivity.</b>
+        <p>A disturbed run's sensor activity exceeds the same phone's controlled-run 95th-percentile baseline —
+          tested one-sided, per device.</p></div></div>
+      <div class="row"><div class="tag">H2</div><div><b>Cross-device agreement.</b>
+        <p>Two phones watching the same event agree at Pearson r ≥ 0.9, with bias inside the channel's noise
+          floor. A log two phones disagree about is worse than none.</p></div></div>
+      <div class="row"><div class="tag">H3</div><div><b>Cross-site reproducibility.</b>
+        <p>Across sites, raw outcomes disagree — and the disagreement shrinks once the logged covariate is
+          included. Reproducibility, recovered from the ambient record.</p></div></div>
+    </div>
+    <p class="note">Pre-registered before data collection. Instrument validation (H2) comes first: we don't claim
+      the covariate explains variance until we've shown the phone measures it reliably. Negative results count —
+      any channel that fails H2 is flagged untrustworthy, not dropped.</p>
+  </section>
+
+  <section id="app">
+    <p class="kicker">Get the app</p>
+    <h2>Run the recorder on your phone.</h2>
+    <p class="sub">The beta runs today through <b>Expo Go</b> — no install friction, no developer account.</p>
+    <ol class="steps">
+      <li>Install <b>Expo Go</b> (free) from the App Store or Google Play.</li>
+      <li>Open it and <b>scan the project QR</b> we share with you.</li>
+      <li>The recorder loads on your phone — grant motion &amp; mic permissions and hit record.</li>
+    </ol>
+    <p class="note">Current beta reads accelerometer, magnetometer, barometer, and sound level. The camera-light
+      channel, the external BME280 module, and a standalone installable build are on the way. Android users will
+      get a direct APK download here.</p>
+  </section>
+</div>
+
+<footer><div class="wrap">
+  <div>
+    <span class="pill">Team 42 · Georgia Tech CS-7470</span>
+    &nbsp; Mobile &amp; Ubiquitous Computing · Summer 2026
+  </div>
+  <div>
+    <a href="https://github.com/CaitlinEverett/ambient-recorder">Source</a> ·
+    <span title="coming soon">Open dataset (soon)</span> ·
+    <span>Sound is level-only, never audio</span>
+  </div>
+</div></footer>
+</body>
+</html>

@@ -131,7 +131,7 @@ unless Reference Video is explicitly enabled (and even then, audio-free).
 - [x] UI mockups + design-system foundation (`Theme.swift`, `AccentColor`)
 - [ ] Three-state session UI (New Session / Recording / Complete) + Mark Sync modal
 - [ ] Stream samples to disk incrementally (crash-safe long sessions)
-- [ ] Sync fiducial capture (tap/flash) for cross-device alignment
+- [x] Sync fiducial capture — `sync` channel + in-app **Mark Sync** button (schema v0.1.2)
 - [ ] Per-sensor live views (meters, trend sparklines) + Disturbance Timeline
 - [ ] Coarse location fix + audio-free reference video (opt-in, schema v0.1.1)
 - [ ] Vibration-meter + light/noise-logger views over the harness (reimplemented hacks — CK)
