@@ -32,12 +32,32 @@ FLOOR = {k: float(np.median([baseline_floor(S[b], k) for b in ("BASE1", "BASE2")
          for k in ("energy", "peak", "rms", "accel")}
 
 
+# When DECK is on, figures drop their own suptitle and footnote: the slide already
+# carries a title, and a chart repeating it puts the same sentence on screen twice.
+# The footnotes also render at ~7pt once the image is scaled into a slide, which is
+# half the deck's body size — that content belongs in the speaker notes instead.
+DECK = False
+
+
+def _strip_for_deck(fig):
+    if not DECK:
+        return
+    if fig._suptitle is not None:
+        fig._suptitle.set_visible(False)
+    for t in list(fig.texts):
+        if t is not fig._suptitle:
+            t.set_visible(False)
+
+
 def save(fig, name):
-    for ext in ("png", "pdf"):
-        fig.savefig(f"figures/{name}.{ext}", dpi=160 if ext == "png" else None,
-                    bbox_inches="tight")
+    _strip_for_deck(fig)
+    prefix = "deck_" if DECK else ""
+    exts = ("png",) if DECK else ("png", "pdf")
+    for ext in exts:
+        fig.savefig(f"figures/{prefix}{name}.{ext}",
+                    dpi=160 if ext == "png" else None, bbox_inches="tight")
     plt.close(fig)
-    print(f"  figures/{name}.png")
+    print(f"  figures/{prefix}{name}.png")
 
 
 # --- Fig 1 — the metric choice changes the conclusion -------------------------
