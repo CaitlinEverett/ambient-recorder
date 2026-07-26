@@ -45,3 +45,8 @@ __pycache__/
 *.pyc
 .venv/
 .ipynb_checkpoints/
+
+# analysis virtualenv (local, never committed)
+analysis/.venv/
+analysis/synth/
+analysis/exclusions.csv
