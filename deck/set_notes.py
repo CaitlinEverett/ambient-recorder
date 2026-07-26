@@ -1,242 +1,238 @@
-"""Replace the deck's speaker notes with riffable bullets, and set the 8-minute cut.
+"""Speaker notes: bullets to talk from, and the 8-minute cut.
 
-The first pass wrote notes as full prose — 2,233 words, about sixteen minutes read
-aloud, and nothing anyone would actually talk from. These are bullets: the number
-to say, the point to make, and the phrasing only where a sentence has to land a
-particular way. Each slide leads with its time budget so the whole thing adds up
-to eight minutes without anyone timing it.
+Written to be said out loud by someone being matter-of-fact. No cold open, no
+build-up, no lines that only work if delivered a particular way.
 
-Four slides are hidden rather than deleted (`show="0"`), so the full deck survives
-for the report appendix.
+Claims are limited to what exists. On record: six sessions, one iPhone X, four
+channels — accelerometer, barometer, magnetometer, derived vibration. No session
+anywhere contains a sync, light or micLevel channel, and there is no dual-device
+recording. So Mark sync is described as implemented rather than demonstrated on
+data, cross-device agreement is untested, and the pendulum ladder is a design.
+
+Footage cues say "a recording session" rather than naming a specific run, so any
+B-roll of the app recording is accurate regardless of which take is used.
+
+Four slides are hidden (`show="0"`) rather than deleted, which lands the shown
+deck at 8:00 and keeps the full version for the report appendix.
 """
 from pptx import Presentation
 
 DECK = "Covariate_Demo.pptx"
-HIDE = {3, 5, 7, 16}          # plan, channel table, privacy, queue — the 8-min cut
+HIDE = {3, 5, 7, 16}          # aims, channel table, privacy, remaining work
 
 NOTES = {
-1: """≈20s  ·  COLD OPEN
-[CUE — phone on the quiet counter, hold 3s before you talk]
-
-• "This is a quiet room. Nothing is happening in it."
-• …except the fridge cycled twice, a door closed down the hall, and the floor's
-  still ringing from a truck outside
-• none of that gets written down. Experiment fails to reproduce tomorrow — none of
-  it's in the notebook either
-• Covariate records the room, so there's something to look at when it doesn't
+1: """≈20s  ·  OPEN
+• Covariate — a smartphone app that records ambient context and attaches it to an
+  experiment record
+• problem: experiments fail to reproduce, and the conditions that might explain it
+  were never written down. Temperature, vibration, light, who was in the room
+• premise: the phone already in the room can log some of that, at no extra cost
+• what follows: what we built, what changed since the proposal, what the pilot
+  data shows, and what it doesn't
 """,
 
-2: """≈45s  ·  THE IDEA
-• ubicomp usually asks what sensors say about the *person*
-• we asked what they say about the *room* — and whether that's worth writing down
-• **deployment's already solved** — Weiser's calm tech showed up as a phone in
-  every pocket. Hard part isn't getting a sensor in the room, it's what to do with
-  the one that's already there
-• **context-awareness pointed the other way** — activity recognition senses a
-  person to serve that person. Here it serves a *record*, one that has to survive
-  someone else repeating it later
-• **the hack is a derived channel** — gravity's a big constant, a door closing is a
-  rounding error next to it. Subtract the constant, same sensor gains two orders of
-  magnitude. No new hardware
+2: """≈45s  ·  WHY RECORD THE ROOM
+• most mobile sensing characterises the person holding the phone. We're using the
+  same sensors to characterise the room
+• deployment isn't the obstacle here — a decent sensor package is already in most
+  rooms where experiments happen. The open question is what useful measurement you
+  can actually take with it
+• the output is metadata attached to an experiment someone may try to repeat, not
+  an adaptation for a user. That changes what's worth logging
+• the technical contribution is the derived channel — gravity is a constant 1 g,
+  a door closing moves the accelerometer about 1%. Remove the constant and measured
+  SNR goes up 3.5 to 5×
 """,
 
-3: """≈30s  ·  THE PLAN   [hidden in the 8-min cut]
+3: """≈30s  ·  AIMS   [hidden in the 8-min cut]
 • build the recorder — five channels, one clock, one file per experiment
 • reproduce two known sensing techniques on commodity hardware
-• evaluate whether any of it's trustworthy — sampling health, cross-device
-  agreement, does a logged covariate explain anything
-• constraint we picked on purpose: **no special hardware.** A phone every lab
-  already owns, or it doesn't get used
+• evaluate whether the output is trustworthy — sampling health, cross-device
+  agreement, whether a logged covariate explains anything
+• design constraint: no additional hardware. It has to run on a phone a lab
+  already owns
 """,
 
-4: """≈50s  ·  WHAT WE BUILT
-[CUE — app screen recording runs under this; talk over it]
+4: """≈50s  ·  IMPLEMENTATION
+[CUE — footage of a recording session in the app runs under this]
 
-• React Native under Expo Go — teammate joins by scanning a QR code. No install,
-  no provisioning profile. That's the whole premise
-• **direct sensors** from Expo — accel 50 Hz, magnetometer 25, barometer
-• **native modules we wrote** — Swift and Kotlin — for light and mic level, because
-  Expo doesn't expose them. Those need a compiled dev build, and the app says so
-  instead of pretending
-• mic stores a *level*, never audio. So there's no waveform to draw and we don't
-  draw one
-• **derived channel** — vibration — computed off the raw accel stream. Coming back
-  to that one
-• every session = one JSON file: metadata, per-channel sampling health, every
+• React Native under Expo Go. Installs by scanning a QR code — no provisioning
+  profile, which matters if a second person is going to record anything
+• direct sensors from Expo: accelerometer at 50 Hz, magnetometer at 25, barometer
+  event-driven
+• light and microphone level are native modules we wrote — Swift and Kotlin —
+  because Expo doesn't expose them. They need a compiled dev client, and the app
+  reports that rather than failing quietly
+• microphone stores a level in dBFS. No audio is recorded
+• vibration is derived from the raw accelerometer stream — more on that shortly
+• one session is one JSON file: metadata, per-channel sampling health, and every
   sample on a shared clock
-• and a **placement** field — where the phone physically sat. Required, because the
-  same event on a benchtop vs. the floor below differs by more than doubling the
-  force
+• sessions also carry a placement field — where the phone physically sat. Same
+  event on a benchtop and on the floor below differ by more than doubling the force
 """,
 
 5: """≈40s  ·  CHANNELS   [hidden in the 8-min cut]
-• seven channels, units and rates
-• two say "dev build" — the native ones. Honest about what's actually running
-• vibration is derived, sync is the alignment fiducial — both ours, not the
-  platform's
-• bottom line's a design rule not a caption: sound is a level, never a waveform.
-  Drawing a squiggle would misrepresent the privacy guarantee
+• seven channels in the schema. Four have recorded data so far
+• light and micLevel are implemented but need the dev build, so nothing has been
+  collected on them yet
+• vibration is derived; sync is the alignment marker
+• microphone stores a level, so there's no waveform to display and we don't display
+  one
 """,
 
-6: """≈35s  ·  MARK SYNC
-[CUE — play the Mark sync clip WITH SOUND. Three buzzes, a second apart]
+6: """≈35s  ·  CROSS-DEVICE ALIGNMENT
+[CUE — footage of Mark sync firing, with audio: three pulses, one second apart]
 
-• session time is monotonic from each phone's own start — two phones share no clock
-  at all. A 40-second offset between two files is normal and means nothing
-• so a button that only wrote a timestamp would align nothing
-• buzzing the motor makes an event **every phone on the surface hears** through its
-  own accelerometer. One device gets ground truth, the others get something to
-  correlate against
-• one-second spacing is load-bearing — you'll see why in two slides
+• session time is monotonic from each device's own recording start. Two phones
+  share no clock origin, so a timestamp on its own can't align them
+• firing the vibration motor produces an event any phone on the same surface picks
+  up through its own accelerometer. One device knows when it emitted; the others
+  have something to correlate against
+• pulses are spaced a second apart deliberately — slide 12 shows why
+• **state plainly: implemented, not yet exercised. We have no dual-device recording
+  yet.** The analysis for it is written and tested against synthetic data
 """,
 
 7: """≈35s  ·  PRIVACY   [hidden in the 8-min cut]
-• four properties that are structural, not policy — audio never recorded, video
-  audio-free by construction, location is a region + altitude and absent by
-  default, recording is session-scoped
-• then the honest part: our proposal said this data holds no personal content.
-  **We retract that.**
-• longitudinal ambient data is data about a household — occupancy, routine, device
-  fingerprint, floor of a building. All of that's in the report now, with what we
-  do about it
+• four properties enforced by the implementation, not by policy — audio never
+  recorded, video audio-free by construction, location stored as region plus
+  altitude and absent by default, recording session-scoped
+• the proposal said this data holds no personal content. We retract that
+• occupancy, daily routine, per-device sensor bias and barometric floor level are
+  all inferable from an ambient record. The report documents those and the controls
 """,
 
-8: """≈45s  ·  WHAT CHANGED
-• **scoping call we'd make again** — two of five channels are native modules, so
-  they need a compiled dev client. Getting a second site through that extra build
-  step was friction we chose not to spend the schedule on. Dropped the
-  Alka-Seltzer study, ran a door experiment that needs only what installs from a
-  QR code
-• worth naming as a finding, not an inconvenience — the gap between "works on my
-  device" and "runs at another site" is the constraint this whole field lives
-  inside
-• **reviewer was right** — three sites with one participant each can't support a
-  between-site variance claim. Person, city, phone model, building: all
-  confounded. Multi-site is now explicitly a case study
-• **we pre-registered** — metrics, windows, exclusion rules, trial counts, frozen
-  and dated in the repo before the data existed
+8: """≈45s  ·  CHANGES SINCE THE PROPOSAL
+• scope reduced to the channels that run in Expo Go. Light and sound need a
+  compiled dev client, and rather than spend schedule on that build step at a
+  second site we replaced the Alka-Seltzer study with a door experiment using the
+  remaining channels
+• that gap — between working on the developer's device and running at another
+  site — is a normal constraint in this area, and it cost us a week
+• multi-site study reclassified as a case study. With one participant per site,
+  person, city, phone model and building are confounded
+• pre-registered: metrics, windows, exclusion rules and trial counts frozen and
+  dated in the repository before the data existed
 """,
 
-9: """≈15s  ·  THE PILOT
-[CUE — Chris's door footage, 10–15s]
+9: """≈15s  ·  PILOT STUDY
+[CUE — door experiment footage, 10–15s]
 
-• Christopher Kimberley ran this in Toronto — 2 baselines, 2 normal closes, 2
+• run by Christopher Kimberley in Toronto: two baselines, two normal closes, two
   slams. One phone, one room, iPhone X
-• everything on the next three slides comes out of those six files
-• worth noticing on its own: somebody else's recordings, another city, reanalysed
-  from scratch without asking him a single question. The export format did its job
+• six sessions, exported as JSON
+• the three results that follow came from those files alone, in a different city,
+  without further input from him
 """,
 
-10: """≈40s  ·  THE HACK
-• top trace — raw accelerometer during a slam. Peaks at **1.011 g**. One percent
-  above gravity
-• because gravity is a constant 1 g sitting on top of everything and the event is a
-  rounding error next to it
-• bottom — same sensor, same samples, low-pass estimate of gravity subtracted out.
-  **28× the noise floor**
-• across the four door events the derived channel beats the raw one it comes from
-  by **3.5 to 5×** in SNR
-• that's the hack. Subtracting a large constant is what lets a small transient be
-  seen at all
+10: """≈40s  ·  DERIVED VIBRATION CHANNEL
+• top trace is raw accelerometer magnitude during a slam. It peaks at 1.011 g —
+  about 1% above gravity
+• gravity is a constant 1 g, so the event is small relative to what's already there
+• bottom trace is the same sensor and the same samples with a low-pass estimate of
+  gravity subtracted: 28 times the noise floor
+• across the four door events the derived channel measures 3.5 to 5 times the SNR
+  of the raw accelerometer
+• this is the main technical result so far
 """,
 
-11: """≈45s  ·  THE STATISTIC CHANGES THE MARGIN
-• same four events, measured three ways
-• the original write-up used a 200 ms window average — and a ~50 ms door impact
-  gets diluted by wherever that window boundary happens to land
-• all three orderings are correct. But window RMS leaves a **1.4× margin** between
-  close and slam where the energy integral leaves **2.7×**
-• margin is what survives more trials
-• and at two trials per condition none of this is significant — it *couldn't* be.
-  Smallest p an exact test can return at n=2 is **0.167**
-• the design could not have reached significance on any data at all. That's now a
-  rule: six per condition, minimum
+11: """≈45s  ·  EFFECT OF METRIC CHOICE
+• same four events, three statistics
+• the original write-up used a 200 ms window average. A door impact lasts about
+  50 ms, so how much of it lands inside a given window depends on where the
+  boundary falls
+• all three statistics order close below slam. The margin differs: 1.4× for window
+  RMS, 2.7× for the energy integral
+• at two trials per condition none of this is statistically significant, and it
+  could not have been — the smallest p an exact test can return at n=2 is 0.167
+• the pre-registration now fixes six trials per condition
 """,
 
-12: """≈35s  ·  THE TAPS WERE NEVER LOST
-• pilot write-up said only one of three sync taps got recorded — flagged as a data
-  quality problem
-• they were all there. Every session has 3 to 5 clean taps in the **50 Hz raw
-  accelerometer**
-• three raps inside a few hundred ms fall into one or two windows of the 5 Hz
-  derived channel — which is where we looked
-• reporting artifact, not a data failure — and exactly the kind of thing that gets
-  written into a paper if nobody re-runs it
-• also why the in-app sync marker spaces its pulses a full second apart
+12: """≈35s  ·  SYNC FIDUCIAL RECOVERY
+• the pilot report concluded that only one of three sync taps had been recorded,
+  and flagged it as a data-quality problem
+• all three are present. Every session has three to five clean taps in the 50 Hz
+  raw accelerometer
+• three raps within a few hundred milliseconds fall into one or two windows of the
+  5 Hz derived channel, which is where the original analysis looked
+• so it was a reporting artifact rather than a recording failure
+• it's also why the in-app sync marker spaces its pulses a full second apart
 """,
 
-13: """≈35s  ·  DETECTION WITHOUT LABELS
-[CUE — terminal, run detect_events live. 18pt minimum]
+13: """≈35s  ·  UNLABELLED EVENT DETECTION
+[CUE — terminal, detect_events() on the six pilot sessions. 18pt minimum]
 
-• everything so far has the same shape: we caused an event, then found it. Proves
-  sensitivity, says nothing about field performance — the analyst always knew where
-  to look
-• so: **the detector gets no labels.** Sets its own threshold from each recording's
-  quiet background
-• finds all four door events, at the times Chris wrote down
-• finds nothing in one baseline — correctly
-• one marginal candidate in the other, ~2× the floor. Either a real event nobody
-  noticed or a false positive at our threshold. We report it either way
+• everything so far has the same structure: we caused an event and then located it.
+  That shows sensitivity, not field performance
+• here the detector gets no labels. It sets a threshold from each recording's own
+  background
+• all four door events recovered, at the times the operator wrote down
+• one baseline returned nothing, correctly
+• the other returned one candidate at 2.1 times the noise floor — either an
+  unnoticed event or a false positive at that threshold. Reported as unresolved
 """,
 
-14: """≈40s  ·  WHAT THIS IS — AND ISN'T
-• left side: what it can claim. Feasibility study, and it succeeds as one — detects
-  a real event 13–109× above its noise floor, repeatable to ~1%, instrument
-  characterised, derived channel beats raw
-• right side: what it can't. One participant per site, so person/city/phone/building
-  all confounded. One operator, one room, one device family. Light and mic
-  untested. Cross-device has one pair behind it
-• **our reviewer said it first** — three sites with one participant each cannot show
-  a logged covariate reduces between-site variance
-• they were right. So the quantitative claims moved to a within-site design, and
-  the multi-site work stays a case study
+14: """≈40s  ·  SCOPE AND LIMITATIONS
+• established: the recorder detects a real physical event 13 to 109 times above its
+  noise floor, repeatable to about 1% within a condition. The instrument's own
+  behaviour is characterised — warm-up, drift, sampling health. The derived channel
+  outperforms the raw sensor
+• not established: one participant per site, so person, city, phone model and
+  building are confounded. One operator, one room, one device family. Light and
+  microphone untested. Cross-device agreement untested — we have one device
+• this follows our reviewer's assessment of the proposal: three sites with one
+  participant each cannot show that logging a covariate reduces between-site
+  variance
+• we accept that, and moved the quantitative claims to a within-site design
 """,
 
-15: """≈40s  ·  'HARD' ISN'T A MEASUREMENT
-[CUE — pendulum footage: wide shot, then close on the release]
+15: """≈40s  ·  STANDARDISING THE DISTURBANCE
+[CUE — pendulum footage if available; otherwise hold the diagram]
 
-• biggest lesson came from the slams — two trials both labelled "slam" differed by
-  nearly **4×**. Comparable to the gap between slamming and closing
-• "hard" isn't a measurement, it's a mood. And we'd built a study on top of one
-• so the disturbance gets a number — fixed mass, fixed string, marked release
-  angles. E = mgL(1−cos θ). Five angles span **22×**
-• six trials per level, randomised order. Six because at n=2 an exact test can't
+• the two trials labelled "slam" differed by 3.9×, which is comparable to the gap
+  between slamming and closing
+• so "hard" isn't usable as a level. The instruction, not the sensor, was the
+  uncontrolled variable
+• the replacement: fixed mass, fixed string length, marked release angles.
+  E = mgL(1−cos θ). Five angles give a 22× range in impact energy
+• six trials per level, randomised order — six because at n=2 an exact test cannot
   return a p below 0.167
-• and say it: **this take is a demonstration.** I'm talking next to the phone, which
-  our own frozen protocol excludes. The dataset run happens this week, empty room
+• **be explicit: this is a design. It has not been run yet.** The pre-registered
+  collection happens this week
 """,
 
-16: """≈35s  ·  QUEUED   [hidden in the 8-min cut]
-• pendulum ladder — the confirmatory spine, everything quantitative rests on it
-• overnight runs, 3 nights — after the fridge duty cycle. A compressor cycling
-  every half hour is exactly the invisible variable we're arguing about
-• blind detection trial — 4 hours of normal activity, log sealed before analysis
-• 12-hour barometer run against a National Weather Service station — the only
-  channel we can check against anything outside our own project. The offset should
-  imply our own altitude, which we can check
+16: """≈35s  ·  REMAINING WORK   [hidden in the 8-min cut]
+• none of this has been collected yet
+• pendulum ladder — the pre-registered spine
+• overnight ambient runs, three nights, aimed at the refrigerator duty cycle
+• a blind detection trial: four hours of ordinary activity with the log sealed
+  before analysis
+• twelve hours of barometer against a National Weather Service station — the only
+  channel we can check against an external reference
 """,
 
 17: """≈12s  ·  CONTRIBUTIONS
 • door-slam pilot — protocol, recording, the six sessions — Christopher Kimberley
-• recorder, export schema, analysis, study design — mine
+• recorder, export schema, analysis and study design — mine
 """,
 
-18: """≈25s  ·  CLOSE
-• here's the one that stung
-• all six pilot sessions are labelled **"controlled"** — including both slams
-• our own app let us mislabel the entire dataset without a word
-• we're building a tool to record what nobody wrote down, and it let us not write
-  something down
-• that's a real finding about the product, and it's in the report
+18: """≈25s  ·  SUMMARY
+• the recorder works, and the derived vibration channel measures a real event 13 to
+  109 times above its noise floor
+• the pilot is a feasibility result, not a reproducibility result — two trials per
+  condition, one operator, one device
+• one usability defect worth reporting: all six pilot sessions are stored with
+  condition "controlled", including both slams. The app accepted that without
+  warning, which is a problem for a tool whose purpose is recording context
+• the pre-registered study runs this week
 
-[CUE — cut back to the opening frame, phone on the counter. Hold 2s, out]
+[CUE — closing frame, then out]
 """,
 }
 
 prs = Presentation(DECK)
 for i, slide in enumerate(prs.slides, 1):
     slide.notes_slide.notes_text_frame.text = NOTES[i].strip()
-    # Hide rather than delete: the full deck stays available for the appendix.
     if i in HIDE:
         slide._element.set("show", "0")
     else:

@@ -185,8 +185,9 @@ def notes(slide, s):
 # =============================================================================
 s = new_slide(TITLE_TT, dark=True)
 text(s, 0.85, 2.45, 11.5, 1.2, "Covariate", size=60, bold=True, color=WHITE)
-text(s, 0.85, 3.65, 11.5, 0.6, "recording the room, so experiments reproduce",
-     size=22, color=GOLD)
+text(s, 0.85, 3.60, 11.5, 1.0,
+     "A feasibility study of consumer-grade smartphone sensors for capturing "
+     "ambient experimental context", size=21, color=GOLD, line=1.25)
 text(s, 0.85, 4.85, 11.5, 1.0, [
     ("CS-7470  Mobile & Ubiquitous Computing  ·  Team 42", {"size": 15}),
     ("Caitlin Everett  ·  Christopher Kimberley", {"size": 15}),
@@ -209,22 +210,23 @@ reproduce, there is something to look at.
 # 2 — the idea
 # =============================================================================
 s = new_slide()
-title(s, "The idea", "why this belongs in a ubiquitous-computing course")
+title(s, "Why record the room", "the case for this in a ubiquitous-computing course")
 text(s, 0.85, 1.95, 11.4, 0.9, [
-    ("Ubicomp asks what the sensors say about the person.", {"size": 19, "color": MUTED}),
-    ("We asked what they say about the room — and whether that is worth writing down.",
-     {"size": 19, "bold": True, "color": NAVY}),
+    ("Most mobile sensing work uses a phone's sensors to characterise the person carrying it.",
+     {"size": 18, "color": MUTED}),
+    ("We use them to characterise the room, and attach the result to an experiment record.",
+     {"size": 18, "bold": True, "color": NAVY}),
 ], space=4)
 hex_rows(s, [
-    ("The deployment problem is already solved.",
-     "Weiser's calm technology arrived as a phone in every pocket. The hard part is no longer "
-     "getting a sensor into the room — it is deciding what to do with the one already there."),
-    ("Context-awareness, pointed the other way.",
-     "Activity recognition senses a person to serve that person. Here the sensing serves a "
-     "record — an experiment that has to survive being repeated by somebody else, later."),
-    ("The hack is a derived channel.",
-     "Gravity is a large constant; a door closing is a rounding error beside it. Subtract the "
-     "constant and the same sensor gains two orders of magnitude — no new hardware."),
+    ("Deployment is not the obstacle.",
+     "A capable sensor package is already present in most rooms where experiments happen. "
+     "The open question is what useful measurement can be taken with it."),
+    ("The sensing serves a record, not a user.",
+     "Activity recognition senses a person in order to adapt to that person. Here the output "
+     "is metadata attached to an experiment that someone may try to repeat later."),
+    ("The derived channel is the contribution.",
+     "Gravity is a constant 1 g; a door closing perturbs the accelerometer by about 1%. "
+     "Removing the constant raises the measured signal-to-noise by 3.5 to 5 times."),
 ], top=3.30, gap=1.28)
 notes(s, """
 Why this belongs in a mobile and ubiquitous computing course rather than a
@@ -254,7 +256,7 @@ of the same samples.
 # 3 — the plan
 # =============================================================================
 s = new_slide()
-title(s, "The plan", "three parts, and one constraint we chose on purpose")
+title(s, "Aims", "three, and one design constraint")
 rows = [
     ("Build", "an ambient-context recorder: pressure, motion, magnetic field, light and sound "
               "level on one clock, exported as a file bound to a named experiment"),
@@ -270,8 +272,8 @@ for i, (head, body) in enumerate(rows):
     text(s, 1.85, y + 0.42, 10.4, 0.7, body, size=15, color=MUTED, line=1.25)
     y += 1.30
 text(s, 0.85, 6.30, 11.4, 0.8, [
-    ("Constraint, chosen deliberately:  no special hardware.", {"size": 17, "bold": True, "color": NAVY}),
-    ("A phone every lab already owns, or it doesn't get used.", {"size": 15, "color": MUTED}),
+    ("Design constraint: no additional hardware.", {"size": 17, "bold": True, "color": NAVY}),
+    ("The recorder has to run on a phone a lab already owns.", {"size": 15, "color": MUTED}),
 ], space=3)
 notes(s, """
 The plan had three parts.
@@ -293,7 +295,7 @@ already owns, or it doesn't get used.
 # 4 — what we built
 # =============================================================================
 s = new_slide()
-title(s, "What we built", "React Native under Expo Go — a teammate joins by scanning a QR code")
+title(s, "Implementation", "React Native under Expo Go; installs by scanning a QR code")
 layers = [
     (NAVY, "1", "Direct sensors", "expo-sensors",
      "accelerometer 50 Hz  ·  magnetometer 25 Hz  ·  barometer"),
@@ -341,7 +343,7 @@ differ by more than doubling the force that caused it.
 # 5 — channels
 # =============================================================================
 s = new_slide()
-title(s, "Channels", "seven, of which two are ours rather than the platform’s")
+title(s, "Channels", "four have recorded data so far; light and micLevel need a dev build")
 cols = [("channel", 0.85), ("values", 4.15), ("units", 7.25), ("rate", 9.05)]
 for name, x in cols:
     text(s, x, 2.15, 3.2, 0.3, name, size=12.5, color=MUTED)
@@ -362,8 +364,8 @@ for ch, vals, units, rate, col in rows:
     text(s, 9.05, y, 3.5, 0.32, rate, size=14, color=MUTED)
     y += 0.55
 text(s, 0.85, 6.62, 11.0, 0.4,
-     "Sound is a level, never a waveform — there is no audio to draw one from.",
-     size=15, color=NAVY, bold=True)
+     "The microphone channel stores a level in dBFS. No audio is recorded, so no waveform "
+     "is displayed.", size=15, color=NAVY, bold=True)
 notes(s, """
 The seven channels, with their units and rates.
 
@@ -383,15 +385,16 @@ would misrepresent the privacy guarantee.
 # 6 — the sync fiducial (video cue)
 # =============================================================================
 s = new_slide()
-title(s, "Mark sync", "the alignment marker is physical on purpose")
-cue(s, "▶  App screen recording — press Mark sync",
-    "three haptic pulses, one second apart · record it WITH audio, "
+title(s, "Cross-device alignment", "implemented; no dual-device recording collected yet")
+cue(s, "▶  Footage: a recording session in the app",
+    "show Mark sync firing — three haptic pulses, one second apart, recorded with audio — "
     "then the export and the JSON meta / health blocks")
-text(s, 1.2, 5.6, 11.0, 1.1,
-     "Session time is monotonic from each device's own recording start, so two phones share "
-     "no clock. A button that only wrote a timestamp would align nothing — driving the "
-     "vibration motor makes an event every phone on the surface hears through its own "
-     "accelerometer.", size=15, color=MUTED, line=1.25)
+text(s, 1.15, 5.55, 11.1, 1.2,
+     "Session time is monotonic from each device's own recording start, so two phones share no "
+     "clock origin. A timestamp alone therefore cannot align them. Firing the vibration motor "
+     "produces an event that any phone resting on the same surface registers through its own "
+     "accelerometer, giving one device a known emission time and the others a signal to "
+     "correlate against.", size=15, color=MUTED, line=1.25)
 notes(s, """
 [CUE — play the Mark sync clip, with sound. Three buzzes, one second apart.]
 
@@ -414,7 +417,7 @@ The one-second spacing is load-bearing, and I'll show you why in a minute.
 # 7 — privacy
 # =============================================================================
 s = new_slide()
-title(s, "Built in, not promised", "privacy properties that are structural, not policy")
+title(s, "Privacy properties", "enforced by the implementation rather than by policy")
 items = [
     "Audio is never recorded. The microphone channel stores a level in dBFS.",
     "Reference video is audio-free by construction — the flag is invariantly false.",
@@ -427,9 +430,10 @@ for t in items:
     text(s, 1.55, y, 10.8, 0.7, t, size=15.5, color=MUTED, line=1.25)
     y += 0.92
 text(s, 0.85, 6.15, 11.4, 0.9, [
-    ("Longitudinal ambient data is still data about a household.",
+    ("Ambient sensor records can still identify a household.",
      {"size": 17, "bold": True, "color": NAVY}),
-    ("Occupancy, routine, device fingerprint, floor of a building — the report says so.",
+    ("Occupancy, daily routine, per-device sensor bias and barometric floor level are all "
+     "inferable. The report documents these and the controls applied.",
      {"size": 14.5, "color": MUTED}),
 ], space=3)
 notes(s, """
@@ -452,16 +456,16 @@ building. The report says all of that, along with what we do about it.
 # 8 — what changed
 # =============================================================================
 s = new_slide()
-title(s, "What changed", "a scoping decision, a demotion, and a freeze")
+title(s, "Changes since the proposal")
 hex_rows(s, [
-    ("Two of five channels need a compiled dev client.",
-     "Light and sound level are native modules, so they don't run in Expo Go. We scoped the "
-     "study to the channels that install by scanning a QR code — and treat that friction as a "
-     "finding, not an inconvenience."),
-    ("Three sites with one participant each can't support a variance claim.",
-     "Person, city, phone model and building are fully confounded. The multi-site study is now "
-     "explicitly a case study; the quantitative claims moved to a within-site design with "
-     "enough trials to carry them."),
+    ("Scope reduced to the channels that run in Expo Go.",
+     "Light and sound level are native modules and require a compiled dev client. Rather than "
+     "spend schedule on that build step at a second site, we replaced the Alka-Seltzer "
+     "dissolution study with a door experiment using only the remaining channels."),
+    ("Multi-site study reclassified as a case study.",
+     "With one participant per site, person, city, phone model and building are confounded. "
+     "The quantitative claims moved to a within-site design with a trial count that can "
+     "support them."),
     ("We pre-registered.",
      "Metrics, windows, exclusion rules and trial counts are frozen in the repository, dated, "
      "before the data existed."),
@@ -495,13 +499,13 @@ frozen in the repository, dated, before the data existed.
 # 9 — the pilot (video cue)
 # =============================================================================
 s = new_slide()
-title(s, "The pilot", "two baselines, two normal door closes, two slams — one phone, one room")
-cue(s, "▶  Door experiment footage",
-    "Christopher Kimberley's recording, Toronto · 10–15 seconds")
-text(s, 1.2, 5.6, 11.0, 0.8,
-     "Six sessions on an iPhone X. Every session labelled, exported, and handed over as JSON — "
-     "which is what made the reanalysis on the next three slides possible at all.",
-     size=15, color=MUTED, line=1.25)
+title(s, "Pilot study", "two baselines, two normal door closes, two slams; one phone, one room")
+cue(s, "▶  Footage: door experiment",
+    "Christopher Kimberley, Toronto · 10–15 seconds")
+text(s, 1.15, 5.55, 11.1, 0.9,
+     "Six sessions on an iPhone X, exported as JSON. The three results that follow were "
+     "obtained from those files alone, in a different city, without further input from the "
+     "person who recorded them.", size=15, color=MUTED, line=1.25)
 notes(s, """
 [CUE — play Chris's door-experiment footage, 10 to 15 seconds]
 
@@ -517,7 +521,7 @@ another city, reanalysed from scratch without asking him a single question.
 # 10 — the hack (fig2)
 # =============================================================================
 s = new_slide()
-title(s, "The hack", "a derived channel outperforms the raw sensor it is derived from")
+title(s, "Derived vibration channel", "signal-to-noise compared with the raw accelerometer")
 picture(s, "deck_fig2_derived_vs_raw.png")
 notes(s, """
 Here's the derived channel, on a real slam.
@@ -538,7 +542,7 @@ a large constant is what lets a small transient be seen at all.
 # 11 — metric choice (fig1)
 # =============================================================================
 s = new_slide()
-title(s, "The statistic changes the margin", "same four events, measured three ways")
+title(s, "Effect of metric choice", "the same four events, measured three ways")
 picture(s, "deck_fig1_metric_choice.png")
 notes(s, """
 Then a result about our own analysis.
@@ -563,7 +567,7 @@ That's now a rule in the protocol: six trials per condition, minimum.
 # 12 — fiducial (fig3)
 # =============================================================================
 s = new_slide()
-title(s, "The taps were never lost", "a reporting artifact, not a data-quality failure")
+title(s, "Sync fiducial recovery", "the pilot report's missing taps were a reporting artifact")
 picture(s, "deck_fig3_fiducial.png")
 notes(s, """
 One more, and this is the one I'd want a reviewer to see.
@@ -584,13 +588,14 @@ marker spaces its pulses a full second apart.
 # 13 — blind detection (terminal cue)
 # =============================================================================
 s = new_slide()
-title(s, "Detection without labels", "the detector never sees the truth log")
-cue(s, "▶  Terminal — detect_events()",
-    "18pt minimum · run it live on Chris's six files")
-text(s, 1.2, 5.5, 11.0, 1.2, [
-    ("Finds all four door events at the operator's noted times. Nothing in one baseline. "
-     "One marginal candidate in the other, at 2.1× the floor — a real unnoticed event, or a "
-     "false positive at our threshold. We report it either way.", {"size": 15, "color": MUTED}),
+title(s, "Unlabelled event detection", "run on the six pilot sessions; the detector receives no labels")
+cue(s, "▶  Terminal: detect_events() on the pilot sessions",
+    "18pt minimum")
+text(s, 1.15, 5.45, 11.1, 1.3, [
+    ("All four door events were recovered at the times the operator recorded. One baseline "
+     "returned no candidates. The other returned a single candidate at 2.1 times the noise "
+     "floor, which is either an unnoticed event or a false positive at the chosen threshold; "
+     "it is reported as unresolved.", {"size": 15, "color": MUTED}),
 ], line=1.25)
 notes(s, """
 [CUE — terminal, run the blind detection live]
@@ -614,8 +619,8 @@ false positive at our threshold. We report it either way.
 # 14 — limitations
 # =============================================================================
 s = new_slide()
-title(s, "What this is — and isn't", "a feasibility study that succeeds as one")
-text(s, 0.85, 2.15, 5.4, 0.35, "A FEASIBILITY STUDY", size=15, bold=True, color=TEAL)
+title(s, "Scope and limitations", "a feasibility study, and what it does not establish")
+text(s, 0.85, 2.15, 5.4, 0.35, "ESTABLISHED", size=15, bold=True, color=TEAL)
 for i, t in enumerate(["Detects a real event at 13–109× its\nnoise floor",
                        "Repeatable to ~1% within a condition",
                        "Instrument characterised — warm-up,\ndrift, sampling health",
@@ -623,18 +628,18 @@ for i, t in enumerate(["Detects a real event at 13–109× its\nnoise floor",
     text(s, 0.85, 2.74 + i * 0.80, 0.3, 0.3, "✓", size=14, bold=True, color=TEAL)
     text(s, 1.30, 2.74 + i * 0.80, 4.6, 0.7, t, size=14, color=MUTED, line=1.25)
 
-text(s, 7.05, 2.15, 5.3, 0.35, "NOT A GENERALISATION", size=15, bold=True, color=DEEPGOLD)
+text(s, 7.05, 2.15, 5.3, 0.35, "NOT ESTABLISHED", size=15, bold=True, color=DEEPGOLD)
 for i, t in enumerate(["One participant per site — person, city,\nphone and building are confounded",
                        "One operator, one room, one device family",
                        "Light and sound level untested — dev build",
-                       "Cross-device agreement: one pair, one site"]):
+                       "Cross-device agreement — untested; one device"]):
     text(s, 7.05, 2.74 + i * 0.80, 0.3, 0.3, "—", size=14, bold=True, color=DEEPGOLD)
     text(s, 7.50, 2.74 + i * 0.80, 4.6, 0.7, t, size=14, color=MUTED, line=1.25)
 
 text(s, 0.85, 5.75, 11.4, 1.2,
-     "Our reviewer said it first: three sites with one participant each cannot show that a "
-     "logged covariate reduces between-site variance. They were right — so the quantitative "
-     "claims moved to a within-site design, and the multi-site work stays a case study.",
+     "This follows our reviewer's assessment of the proposal: three sites with one participant "
+     "each cannot demonstrate that logging a covariate reduces between-site variance. We accept "
+     "that, and have moved the quantitative claims to a within-site design.",
      size=15, color=NAVY, line=1.3)
 notes(s, """
 What this work is, and what it isn't.
@@ -660,7 +665,7 @@ what it is, a case study.
 # 15 — what we learned / the pendulum
 # =============================================================================
 s = new_slide()
-title(s, "'Hard' isn't a measurement", "two trials labelled slam differed by nearly 4×")
+title(s, "Standardising the disturbance", "designed, not yet run; two trials labelled slam differed by 3.9×")
 picture(s, "deck_fig4_pendulum_design.png")
 notes(s, """
 [CUE — cut in the pendulum footage here: wide shot, then the close on the release]
@@ -685,7 +690,7 @@ empty room.
 # 16 — queued
 # =============================================================================
 s = new_slide()
-title(s, "Queued this week", "what turns a feasibility read into a result")
+title(s, "Remaining work", "none of the following has been collected yet")
 items = [
     ("Pendulum dose ladder", "5 levels × 6 trials, randomised order, empty room",
      "the confirmatory spine"),
@@ -748,15 +753,20 @@ analysis and the study design are mine.
 # 18 — close
 # =============================================================================
 s = new_slide(dark=True)
-text(s, 0.85, 2.80, 11.5, 2.6, [
-    ("We're building a tool to record what nobody wrote down.",
-     {"size": 32, "bold": True, "color": WHITE, "space": 20}),
-    ("Every session in our own pilot is labelled “controlled” — including both slams.",
-     {"size": 23, "color": GOLD, "space": 20}),
-    ("The app let us mislabel the entire dataset without a word. That's a finding about "
-     "the product, and it's in the report.",
-     {"size": 17, "color": RGBColor(0xC8, 0xD2, 0xDC)}),
-], line=1.25)
+title(s, "Summary", dark=True)
+text(s, 0.85, 2.35, 11.5, 3.4, [
+    ("The recorder works, and the derived vibration channel measures a real physical event "
+     "at 13 to 109 times its own noise floor.",
+     {"size": 20, "color": WHITE, "space": 16}),
+    ("The pilot is a feasibility result, not a reproducibility result. It has two trials per "
+     "condition, one operator and one device.",
+     {"size": 20, "color": WHITE, "space": 16}),
+    ("One usability defect worth reporting: all six pilot sessions are stored with condition "
+     "\"controlled\", including both slams. The app accepted the mislabelling without warning.",
+     {"size": 20, "color": GOLD, "space": 16}),
+    ("The pre-registered study runs this week.",
+     {"size": 20, "color": WHITE}),
+], line=1.3)
 notes(s, """
 And the one that stung.
 
