@@ -1453,6 +1453,12 @@ if LEAN:
         "Privacy properties", "Sync fiducial recovery", "Unlabelled event detection",
         "Scope and limitations", "Standardising the disturbance", "Remaining work",
         "Effect of metric choice", "Derived vibration channel",
+        # Cut for time, not for weight. Eight minutes is a hard cap and the
+        # spec mockup is superseded by the screenshot beside it; the
+        # consumer-hardware failure-mode table survives in the full deck and
+        # its conclusion — relative change only, never an absolute — is
+        # already carried by the BLUF and by "Two phones, one table".
+        "inuse1", "inuse2", "inuse3", "Why this is hard",
     }
     for k in CUT:
         e = _ids[id(REG[k])]

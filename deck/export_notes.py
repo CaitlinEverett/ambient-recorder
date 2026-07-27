@@ -1,12 +1,15 @@
 """Export the deck's speaker notes to markdown, grouped by rubric section.
 
-The budget shown per slide is the one written into the notes themselves (the
-``≈Ns`` marker), not a word-count estimate — word count tracks reading speed, and
-these notes are bullets to talk from rather than prose to read.
+Per-slide seconds are derived from the word count at the rate declared in
+set_notes, not from a hand-written marker. The markers were removed after they
+were found to be wrong by a factor of three; a number nobody can check is worse
+than no number.
 """
 import re
 
 from pptx import Presentation
+
+from set_notes import WPM, PAUSE_S, spoken
 
 DECK = "Covariate_Demo.pptx"
 
@@ -14,10 +17,10 @@ SECTIONS = {
     1: "Open",
     2: "§ 1 · Aims and objectives",
     7: "§ 2 · Project presentation",
-    14: "§ 3 · Changes to the plan",
-    16: "§ 4 · Results",
-    21: "§ 5 · Reflection",
-    25: "Close",
+    13: "§ 3 · Changes to the plan",
+    15: "§ 4 · Results",
+    20: "§ 5 · Reflection",
+    26: "Close",
 }
 
 prs = Presentation(DECK)
@@ -29,8 +32,7 @@ for i, s in enumerate(prs.slides, 1):
     head = next((sh.text_frame.text.strip().splitlines()[0]
                  for sh in s.shapes
                  if sh.has_text_frame and sh.text_frame.text.strip()), "")
-    m = re.search(r"≈(\d+)s", notes)
-    secs = int(m.group(1)) if (m and shown) else 0
+    secs = round(len(spoken(notes).split()) / WPM * 60 + PAUSE_S) if shown else 0
     rows.append((i, head, secs, shown))
 
     if i in SECTIONS:
@@ -52,8 +54,9 @@ header = [
     "",
     f"- **{shown_n} slides**, all of them narrated. Cut material is not in this file "
     "at all — `LEAN= python3 build_deck.py` writes the full version for the report.",
-    f"- **Budget: {total}s = {total // 60}:{total % 60:02d}** against a strict 8:00 cap "
-    f"— {480 - total}s of margin",
+    f"- **{total}s = {total // 60}:{total % 60:02d}** at {WPM} words per minute, against a "
+    f"strict 8:00 cap — {480 - total}s of margin. Measured against a synthesised "
+    "read, not estimated.",
     "- The time lever is the pilot slide. Shorten the footage there first.",
     "",
     "## Rubric coverage",
@@ -77,4 +80,4 @@ header += [f"| {i} | {h} | {f'{t}s' if t else '—'} | {'yes' if sh else 'hidden
 header += [""]
 
 open("Speaker_Notes.md", "w").write("\n".join(header) + "\n".join(body))
-print(f"Speaker_Notes.md · {shown_n} shown · {total}s = {total // 60}:{total % 60:02d}")
+print(f"Speaker_Notes.md · {shown_n} shown · {total // 60}:{total % 60:02d} at {WPM} wpm")
