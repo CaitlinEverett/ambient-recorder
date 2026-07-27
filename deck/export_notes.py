@@ -1,68 +1,80 @@
-"""Export the deck's speaker notes to markdown, with runtimes and a cut list."""
+"""Export the deck's speaker notes to markdown, grouped by rubric section.
+
+The budget shown per slide is the one written into the notes themselves (the
+``≈Ns`` marker), not a word-count estimate — word count tracks reading speed, and
+these notes are bullets to talk from rather than prose to read.
+"""
+import re
+
 from pptx import Presentation
 
-WPM = 140  # only used to sanity-check; the notes carry explicit per-slide budgets
+DECK = "Covariate_Demo.pptx"
 
-# Slides kept in each cut. The full deck runs ~16 minutes of narration, which is
-# long for a demo; these are the two shorter passes through the same material.
-SHORT = {1, 2, 4, 6, 8, 10, 11, 14, 15, 17, 18}
-MEDIUM = SHORT | {3, 5, 9, 13, 16}
-CUT_6, CUT_10 = SHORT, MEDIUM
+SECTIONS = {
+    1: "Open",
+    2: "§ 1 · Aims and objectives",
+    7: "§ 2 · Project presentation",
+    15: "§ 3 · Changes to the plan",
+    17: "§ 4 · Results",
+    23: "§ 5 · Reflection",
+    30: "Close",
+}
 
-prs = Presentation("Covariate_Demo.pptx")
-rows, out = [], []
+prs = Presentation(DECK)
+rows, body = [], []
 
 for i, s in enumerate(prs.slides, 1):
     notes = s.notes_slide.notes_text_frame.text.strip()
-    head = ""
-    for sh in s.shapes:
-        if sh.has_text_frame and sh.text_frame.text.strip():
-            head = sh.text_frame.text.strip().splitlines()[0]
-            break
-    n = len(notes.split())
-    tag = "CORE" if i in CUT_6 else ("10-MIN" if i in CUT_10 else "FULL ONLY")
-    rows.append((i, head, n, n / WPM * 60, tag))
-    out.append(f"## {i}. {head}\n\n*{n} words · ~{n / WPM * 60:.0f}s · {tag}*\n\n{notes}\n\n---\n")
+    shown = s._element.get("show") != "0"
+    head = next((sh.text_frame.text.strip().splitlines()[0]
+                 for sh in s.shapes
+                 if sh.has_text_frame and sh.text_frame.text.strip()), "")
+    m = re.search(r"≈(\d+)s", notes)
+    secs = int(m.group(1)) if (m and shown) else 0
+    rows.append((i, head, secs, shown))
+
+    if i in SECTIONS:
+        body.append(f"\n# {SECTIONS[i]}\n")
+    if shown:
+        body.append(f"## {i}. {head}  ·  {secs}s\n\n{notes}\n\n---\n")
 
 total = sum(r[2] for r in rows)
-six = sum(r[2] for r in rows if r[0] in CUT_6)
-ten = sum(r[2] for r in rows if r[0] in CUT_10)
+shown_n = sum(1 for r in rows if r[3])
 
 header = [
-    "# Covariate — demo deck speaker notes",
+    "# Covariate — speaker notes",
     "",
-    "Filmed straight through the deck. Lines in square brackets are stage",
-    "directions, not narration — they mark where footage is cut in.",
+    "Filmed straight through the deck. Square brackets are stage directions, not",
+    "narration. `[CONFIRM]` marks a line whose wording depends on a fact still open",
+    "at the time of writing.",
     "",
     "## Runtime",
     "",
-    f"| Cut | Slides | Words | At {WPM} wpm |",
+    f"- **{shown_n} slides shown**, {len(rows) - shown_n} hidden (`Hide Slide`, still in "
+    "the file for the report)",
+    f"- **Budget: {total}s = {total // 60}:{total % 60:02d}** against a strict 8:00 cap "
+    f"— {480 - total}s of margin",
+    "- The time lever is the pilot slide. Shorten the footage there first.",
+    "",
+    "## Rubric coverage",
+    "",
+    "| Rubric line | Pts | Slides | Budget |",
     "|---|---|---|---|",
-    f"| Full deck | 18 | {total} | budgets sum to ~9.5 min |",
-    f"| **8-minute cut (as shipped)** | 14 | — | **8.0 min** |",
-    "",
-    "Every slide's notes open with its own time budget. The four slides below are",
-    "already set to `Hide Slide` in the file, which lands the shown deck at 8:00 and",
-    "still hits the five beats the staff asked for (plan, accomplished, changes,",
-    "results, learned):",
-    "",
-    "- **Hidden:** 3 (the plan), 5 (channel table), 7 (privacy), 16 (queue). Each is "
-    "covered in a sentence elsewhere, so nothing is lost, only compressed.",
-    "- **Need it shorter?** Unhide nothing and cut 12 and 13 as well \u2014 that is 6:00. "
-    "Do not cut 14; the limitations slide is where the reviewer\u2019s critique gets "
-    "credited, and that is worth more than any single result.",
-    "",
-    "Hidden slides are still in the file \u2014 they stay available for the report",
-    "appendix, and PowerPoint skips them in Present mode.",
+    "| Recap of aims and objectives | 10 | 2–6 | 79s |",
+    "| Project presentation | 20 | 7–9 | 83s |",
+    "| Changes to original plan | 10 | 15–16 | 45s |",
+    "| Results | 20 | 17–20 | 103s |",
+    "| Reflection | 20 | 23–26 | 94s |",
+    "| Length 5–8 min | 10 | — | 7:26 |",
     "",
     "## Per-slide",
     "",
-    "| # | Slide | Words | ~Time | Cut |",
-    "|---|---|---|---|---|",
+    "| # | Slide | Budget | In the cut |",
+    "|---|---|---|---|",
 ]
-header += [f"| {i} | {h} | {n} | {t:.0f}s | {tag} |" for i, h, n, t, tag in rows]
-header += ["", "---", ""]
+header += [f"| {i} | {h} | {f'{t}s' if t else '—'} | {'yes' if sh else 'hidden'} |"
+           for i, h, t, sh in rows]
+header += [""]
 
-open("Speaker_Notes.md", "w").write("\n".join(header) + "\n".join(out))
-print(f"full {total} words (~{total / WPM:.0f} min) · "
-      f"10-min cut {ten} (~{ten / WPM:.0f}) · 6-min cut {six} (~{six / WPM:.0f})")
+open("Speaker_Notes.md", "w").write("\n".join(header) + "\n".join(body))
+print(f"Speaker_Notes.md · {shown_n} shown · {total}s = {total // 60}:{total % 60:02d}")

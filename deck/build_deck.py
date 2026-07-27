@@ -22,6 +22,7 @@ through. `[CUE]` lines mark where footage is cut in.
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from pptx import Presentation
@@ -86,7 +87,8 @@ def new_slide(layout=PLAIN, dark=False):
 
 
 def text(slide, x, y, w, h, runs, size=16, color=INK, bold=False,
-         align=PP_ALIGN.LEFT, space=6, line=1.0):
+         align=PP_ALIGN.LEFT, space=6, line=1.0, italic=False):
+    _italic = italic
     """runs: str, or list of (text, {overrides}) tuples, one paragraph each."""
     tb = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
     tf = tb.text_frame
@@ -105,7 +107,7 @@ def text(slide, x, y, w, h, runs, size=16, color=INK, bold=False,
         f.size = Pt(over.get("size", size))
         f.bold = over.get("bold", bold)
         f.color.rgb = over.get("color", color)
-        f.italic = over.get("italic", False)
+        f.italic = over.get("italic", _italic)
     return tb
 
 
@@ -125,12 +127,62 @@ def hexagon(slide, x, y, side, label, fill=NAVY, fg=WHITE, size=15):
     return sh
 
 
-def title(slide, t, sub=None, dark=False):
+REG: "dict[str, object]" = {}
+
+
+def register(slide, key):
+    if key in REG:
+        sys.exit(f"duplicate slide key: {key}")
+    REG[key] = slide
+    return slide
+
+
+def title(slide, t, sub=None, dark=False, k=None):
     text(slide, 0.85, 0.62, 11.6, 1.0, t, size=36, bold=True,
          color=WHITE if dark else NAVY)
     if sub:
         text(slide, 0.85, 1.42, 11.6, 0.5, sub, size=16,
              color=RGBColor(0xC8, 0xD2, 0xDC) if dark else MUTED)
+    register(slide, k or t)
+
+
+def divider(num, name, answers):
+    """A dark section marker naming a rubric line in the grader's own words."""
+    d = new_slide(dark=True)
+    hexagon(d, 0.85, 2.60, 1.05, num, fill=GOLD, fg=NAVY, size=30)
+    text(d, 2.35, 2.62, 10.2, 0.9, name, size=42, bold=True, color=WHITE)
+    text(d, 2.35, 3.62, 10.2, 0.6, answers, size=17,
+         color=RGBColor(0xC8, 0xD2, 0xDC), line=1.3)
+    register(d, f"div:{name}")
+    return d
+
+
+def citation_card(slide, y, venue, head, authors, quote, h=1.80):
+    """A paper reference as native shapes — citation plus the exact sentence.
+
+    Not a page screenshot. A two-column journal page rendered into a 5-inch box is
+    unreadable from a video, and the quoted sentence is the entire reason the paper
+    is on the slide.
+    """
+    panel = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.85),
+                                   Inches(y), Inches(11.6), Inches(h))
+    panel.fill.solid(); panel.fill.fore_color.rgb = PALE
+    panel.line.color.rgb = OLDGOLD; panel.line.width = Pt(1.25)
+    panel.shadow.inherit = False
+    panel.text_frame.text = ""
+
+    rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.85),
+                                  Inches(y), Inches(0.09), Inches(h))
+    rule.fill.solid(); rule.fill.fore_color.rgb = GOLD
+    rule.line.fill.background(); rule.shadow.inherit = False
+
+    text(slide, 1.28, y + 0.18, 10.6, 0.26, venue, size=11.5, bold=True,
+         color=DEEPGOLD)
+    text(slide, 1.28, y + 0.46, 10.6, 0.32, head, size=16, bold=True, color=NAVY)
+    text(slide, 1.28, y + 0.76, 10.6, 0.26, authors, size=12, color=MUTED)
+    text(slide, 1.28, y + 1.06, 10.6, 0.60, quote, size=14, color=NAVY,
+         italic=True, line=1.22)
+    return panel
 
 
 def hex_rows(slide, items, top=2.25, gap=1.18, x=0.85, wide=11.4, fill=NAVY):
@@ -224,48 +276,41 @@ reproduce, there is something to look at.
 # =============================================================================
 # 2 — the idea
 # =============================================================================
-s = new_slide()
-title(s, "Why record the room", "the case for this in a ubiquitous-computing course")
-text(s, 0.85, 1.95, 11.4, 0.9, [
-    ("Most mobile sensing work uses a phone's sensors to characterise the person carrying it.",
-     {"size": 18, "color": MUTED}),
-    ("We use them to characterise the room, and attach the result to an experiment record.",
-     {"size": 18, "bold": True, "color": NAVY}),
-], space=4)
-hex_rows(s, [
-    ("Deployment is not the obstacle.",
-     "A capable sensor package is already present in most rooms where experiments happen. "
-     "The open question is what useful measurement can be taken with it."),
-    ("The sensing serves a record, not a user.",
-     "Activity recognition senses a person in order to adapt to that person. Here the output "
-     "is metadata attached to an experiment that someone may try to repeat later."),
-    ("The derived channel is the contribution.",
-     "Gravity is a constant 1 g; a door closing perturbs the accelerometer by about 1%. "
-     "Removing the constant raises the measured signal-to-noise by 3.5 to 5 times."),
-], top=3.30, gap=1.28)
-notes(s, """
-Why this belongs in a mobile and ubiquitous computing course rather than a
-statistics one.
+# The same slide three times, adding one paper each. python-pptx cannot write
+# PowerPoint animations, so the reveal is built as successive slides — which also
+# survives export to PDF and to video without anyone clicking anything.
+ERRINGTON = dict(
+    venue="eLife 10:e67995 (2021)  ·  CC BY  ·  doi.org/10.7554/eLife.67995",
+    head="Challenges for assessing replicability in preclinical cancer biology",
+    authors="Errington, Denis, Perfito, Iorns & Nosek  ·  193 experiments, 53 papers",
+    quote="\u201cNone of the 193 experiments were described in sufficient detail in the "
+          "original paper to enable us to design protocols to repeat the experiments.\u201d",
+)
+CRABBE = dict(
+    venue="Science 284(5420):1670\u20132 (1999)  ·  doi.org/10.1126/science.284.5420.1670",
+    head="Genetics of mouse behavior: interactions with laboratory environment",
+    authors="Crabbe, Wahlsten & Dudek  ·  three laboratories, simultaneous testing",
+    quote="\u201cApparatus, test protocols, and many environmental variables were rigorously "
+          "equated \u2026 there were systematic differences in behavior across labs.\u201d",
+)
 
-Ubicomp usually asks what the sensors can tell you about the person holding them.
-We asked what they can tell you about the room — and whether that's worth writing
-down.
+for _step in (0, 1, 2):
+    s = new_slide()
+    title(s, "Why record the room",
+          "the problem this is aimed at, and why it belongs in a ubicomp course",
+          k=f"idea{_step}")
+    text(s, 0.85, 1.92, 11.4, 0.62,
+         "Two experiments run to the same written protocol still disagree. The difference "
+         "is in the room \u2014 and nobody records the room.",
+         size=18, bold=True, color=NAVY, line=1.25)
+    # Two lines of intro at 18 pt end near 2.55 in. Cards stack from there with a
+    # 0.12 in gutter; anything past 6.7 in collides with the Georgia Tech logo.
+    if _step >= 1:
+        citation_card(s, 2.70, **ERRINGTON)
+    if _step >= 2:
+        citation_card(s, 4.62, **CRABBE)
+    notes(s, "PLACEHOLDER")
 
-Three reasons that's interesting here. First, the deployment problem is already
-solved. Weiser's calm technology arrived as a phone in every pocket, so the hard
-part is no longer getting a sensor into the room — it's deciding what to do with
-the one that is already there.
-
-Second, it points context-awareness the other way. Activity recognition senses a
-person in order to serve that person. Here the sensing serves a record — an
-experiment that has to survive being repeated by somebody else, somewhere else,
-later.
-
-And third, the hack is a derived channel. Gravity is a large constant, and a door
-closing is a rounding error beside it. Subtract the constant and the same sensor
-gains two orders of magnitude. No new hardware — just a different question asked
-of the same samples.
-""")
 
 # =============================================================================
 # NEW — why consumer hardware makes this hard
@@ -330,7 +375,8 @@ notes(s, "PLACEHOLDER")
 # 3 — the plan
 # =============================================================================
 s = new_slide()
-title(s, "Aims", "three, and one design constraint")
+title(s, "Aims and objectives", "as proposed \u2014 three objectives and one design "
+      "constraint", k="aims")
 rows = [
     ("Build", "an ambient-context recorder: pressure, motion, magnetic field, light and sound "
               "level on one clock, exported as a file bound to a named experiment"),
@@ -369,49 +415,39 @@ already owns, or it doesn't get used.
 # 4 — what we built
 # =============================================================================
 s = new_slide()
-title(s, "Implementation", "React Native under Expo Go; installs by scanning a QR code")
+title(s, "Implementation", "six channels, and a deployment boundary running straight "
+      "through the middle of them")
 layers = [
-    (NAVY, "1", "Direct sensors", "expo-sensors",
-     "accelerometer 50 Hz  ·  magnetometer 25 Hz  ·  barometer"),
-    (NAVY, "2", "Native modules", "Swift on iOS, Kotlin on Android",
-     "camera-EXIF light  ·  microphone LEVEL only — audio is never recorded"),
-    (TEAL, "3", "Derived channel", "computed from the raw stream",
+    (NAVY, "1", "Direct sensors", "expo-sensors  \u2014  no build step",
+     "accelerometer 50 Hz  \u00b7  magnetometer 25 Hz  \u00b7  barometer"),
+    (TEAL, "2", "Derived channel", "computed from the raw stream",
      "vibration: gravity removed, RMS + peak over a 200 ms window"),
+    (DEEPGOLD, "3", "Native modules", "Swift on iOS, Kotlin on Android  \u2014  needs a compiled build",
+     "camera-EXIF light  \u00b7  microphone LEVEL only \u2014 audio is never recorded, so "
+     "there is no waveform to leak"),
     (OLDGOLD, "4", "Session record", "one session, one JSON file",
-     "metadata  ·  per-channel sampling health  ·  every sample on one clock"),
+     "metadata  \u00b7  placement  \u00b7  per-channel sampling health  \u00b7  one shared clock, "
+     "aligned across devices by a haptic fiducial"),
 ]
-y = 2.42
+y = 2.24
 for col, num, name, how, what in layers:
     hexagon(s, 0.85, y - 0.02, 0.56, num, fill=col, size=13)
     text(s, 1.66, y, 3.3, 0.35, name, size=18, bold=True, color=NAVY)
-    text(s, 5.05, y + 0.04, 7.2, 0.35, how, size=13.5, color=DEEPGOLD, bold=True)
-    text(s, 1.66, y + 0.42, 10.6, 0.35, what, size=14, color=MUTED)
+    text(s, 5.05, y + 0.04, 7.4, 0.35, how, size=13, color=DEEPGOLD, bold=True)
+    text(s, 1.66, y + 0.42, 10.6, 0.5, what, size=14, color=MUTED, line=1.2)
     y += 1.06
-notes(s, """
-[CUE — this is where the app screen recording goes; talk over it]
 
-It's React Native running under Expo Go, so a teammate joins by scanning a QR
-code. No install, no provisioning profile. That matters, because the whole premise
-is a device every lab already has.
+# Both lines stay single-line at this width: a second wrapped line puts the body
+# into the Georgia Tech logo, which sits from about 6.85 in down.
+text(s, 0.85, 6.22, 9.9, 0.62, [
+    ("Two tiers, and the gap between them is a result.",
+     {"size": 16, "bold": True, "color": NAVY, "space": 4}),
+    ("Four channels install by scanning a QR code. All six need a compiled dev client "
+     "\u2014 the hardware is universal, access to it is not.",
+     {"size": 14, "color": MUTED}),
+], line=1.2)
+notes(s, "PLACEHOLDER")
 
-Four kinds of channel. Direct sensors come straight from Expo — accelerometer at
-fifty hertz, magnetometer at twenty-five, barometer event-driven.
-
-Light and sound level are native modules we wrote ourselves: Swift on iOS, Kotlin
-on Android, because Expo doesn't expose them. Sound is stored as a level in
-decibels — no audio is ever recorded, so there is no waveform to draw and we don't
-draw one.
-
-Then the derived channel — vibration — computed from the raw accelerometer stream.
-I'll come back to that one.
-
-And every session is one JSON file: metadata, a per-channel sampling-health
-record, and every sample on a shared clock.
-
-Every session also carries a placement — where the phone physically sat. That's
-required, because the same event recorded on a benchtop and on the floor below it
-differ by more than doubling the force that caused it.
-""")
 
 # =============================================================================
 # NEW — what it looks like to use
@@ -556,18 +592,22 @@ building. The report says all of that, along with what we do about it.
 s = new_slide()
 title(s, "Changes since the proposal")
 hex_rows(s, [
-    ("Scope reduced to the channels that run in Expo Go.",
-     "Light and sound level are native modules and require a compiled dev client. Rather than "
-     "spend schedule on that build step at a second site, we replaced the Alka-Seltzer "
-     "dissolution study with a door experiment using only the remaining channels."),
+    ("Scope was cut to four channels, then won back to six.",
+     "Light and sound level need a compiled dev client, so the pilot ran on the four Expo Go "
+     "channels. The dev client now builds and all six run \u2014 a dropped feature became a "
+     "measured deployment boundary."),
     ("Multi-site study reclassified as a case study.",
      "With one participant per site, person, city, phone model and building are confounded. "
      "The quantitative claims moved to a within-site design with a trial count that can "
      "support them."),
+    ("The team went from two to one, and the protocol followed.",
+     "The standardised pendulum ladder was displaced by an ambient-condition experiment \u2014 "
+     "a running dehumidifier, switched on and off \u2014 because it tests the project's actual "
+     "claim rather than characterising the instrument."),
     ("We pre-registered.",
      "Metrics, windows, exclusion rules and trial counts are frozen in the repository, dated, "
      "before the data existed."),
-], top=2.35, gap=1.42, fill=OLDGOLD)
+], top=2.20, gap=1.26, fill=OLDGOLD)
 notes(s, """
 Three things changed.
 
@@ -733,15 +773,15 @@ table(s,
        (("magnetometer", DEEPGOLD, True), ("probably not useful\nat this scale", DEEPGOLD, True),
         "event deviation 0.31–0.56 µT;\nbaseline spread 1.03 µT",
         "the magnet ladder is\ndetectable at 10 cm"),
-       (("light · micLevel", MUTED, True), ("unknown", MUTED, True),
-        "untested — both need a\ncompiled dev client",
-        "we get a dev build\nrunning"),
+       (("light · micLevel", DEEPGOLD, True), ("open, no longer\nblocked", DEEPGOLD, True),
+        "dev client builds; both\nchannels now run",
+        "the first exported\nsession holds up"),
        (("cross-device", MUTED, True), ("untested", MUTED, True),
-        "one device",
+        "one device with all six\nchannels",
         "the two-device run\nreturns r ≥ 0.9")],
       top=2.12, row_h=0.68, size=12.5)
 text(s, 0.85, 6.72, 10.4, 0.4,
-     "Four runs settle every channel except the two that need a dev build.",
+     "Two channels moved from blocked to open this week. Four runs settle the rest.",
      size=13.5, color=NAVY)
 notes(s, "PLACEHOLDER")
 
@@ -860,6 +900,35 @@ check against the known elevation of the room.
 """)
 
 # =============================================================================
+# NEW — what we got wrong
+# =============================================================================
+s = new_slide()
+title(s, "What we got wrong", "three, and the third one is about our own product")
+for i, (col, head, body) in enumerate([
+    (DEEPGOLD, "The pilot could not have succeeded.",
+     "Two trials per condition. An exact permutation test on n = 2 has a minimum "
+     "attainable p of 0.167, so no arrangement of the data could have cleared 0.05. "
+     "We designed a study whose result was fixed before collection \u2014 and we did not "
+     "notice until we tried to analyse it. Six per condition puts the floor at 0.001."),
+    (DEEPGOLD, "There is no single best channel.",
+     "The derived vibration channel beats the raw accelerometer on sensitivity, and "
+     "loses to it on cross-device agreement \u2014 each device runs its own 200 ms window "
+     "clock, so two phones disagree about a windowed statistic more than about the "
+     "motion underneath it. Sensitivity and comparability trade against each other."),
+    (GOLD, "The app let us mislabel every session, silently.",
+     "All six pilot sessions are stored as condition \u201ccontrolled\u201d, including both "
+     "slams. We are building an instrument to record what nobody wrote down, and it "
+     "accepted a whole dataset written down wrong without a word. Found by using it; "
+     "left uncorrected on the record."),
+]):
+    yy = 2.20 + i * 1.62
+    hexagon(s, 0.85, yy - 0.02, 0.58, str(i + 1), fill=col, size=14)
+    text(s, 1.72, yy, 10.6, 0.38, head, size=19, bold=True, color=NAVY)
+    text(s, 1.72, yy + 0.42, 10.6, 1.05, body, size=14, color=MUTED, line=1.22)
+notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
 # NEW — if the sensors are not good enough
 # =============================================================================
 s = new_slide()
@@ -879,13 +948,13 @@ for i, (col, head, body) in enumerate([
     text(s, x, 3.12, 5.5, 0.4, head, size=20, bold=True, color=NAVY)
     text(s, x, 3.62, 5.5, 1.6, body, size=14.5, color=MUTED, line=1.35)
 
-text(s, 0.85, 5.60, 11.5, 1.4, [
+# Held to 10.4 in wide and three lines: the fourth line reaches the GT logo.
+text(s, 0.85, 5.62, 10.4, 1.3, [
     ("The second case has measured support.",
      {"size": 16, "bold": True, "color": NAVY, "space": 8}),
     ("The same sound-measurement apps, re-run with external calibrated microphones, came "
-     "within ±1 dB of reference (Kardous & Shaw, JASA 2016) — the built-in signal chain "
-     "was the limit, not the phone. A phone with an external microphone can then meet "
-     "IEC 61672 Class 2.", {"size": 14.5, "color": MUTED}),
+     "within ±1 dB of reference (Kardous & Shaw, JASA 2016). The built-in signal chain was "
+     "the limit, not the phone.", {"size": 14.5, "color": MUTED}),
 ], line=1.3)
 notes(s, "PLACEHOLDER")
 
@@ -917,14 +986,14 @@ analysis and the study design are mine.
 s = new_slide(dark=True)
 title(s, "Summary", dark=True)
 text(s, 0.85, 2.35, 11.5, 3.4, [
-    ("The recorder works, and the derived vibration channel measures a real physical event "
-     "at 13 to 109 times its own noise floor.",
+    ("The recorder works. All six channels run, and the derived vibration channel measures "
+     "a real physical event at 13 to 109 times its own noise floor.",
      {"size": 20, "color": WHITE, "space": 16}),
-    ("The pilot is a feasibility result, not a reproducibility result. It has two trials per "
-     "condition, one operator and one device.",
+    ("This is a feasibility result, not a reproducibility result \u2014 and that distinction is "
+     "the honest version of what one term buys.",
      {"size": 20, "color": WHITE, "space": 16}),
-    ("One usability defect worth reporting: all six pilot sessions are stored with condition "
-     "\"controlled\", including both slams. The app accepted the mislabelling without warning.",
+    ("Whether a phone is a good enough instrument is still open. Whether it is a good enough "
+     "recorder is not: that part works either way.",
      {"size": 20, "color": GOLD, "space": 16}),
     ("The pre-registered study runs this week.",
      {"size": 20, "color": WHITE}),
@@ -941,6 +1010,68 @@ something down. That's a real finding about the product, and it's in the report.
 [CUE — cut back to the opening frame: the phone on the quiet counter. Hold two
 seconds, then out.]
 """)
+
+# =============================================================================
+# section dividers — authored last, positioned by ORDER
+# =============================================================================
+divider("1", "Aims and objectives",
+        "what we set out to build, and the problem it is aimed at")
+divider("2", "Project presentation",
+        "what we built, and why consumer hardware makes it a question")
+divider("3", "Changes to the plan",
+        "four, and what each one cost or bought")
+divider("4", "Results",
+        "one pilot, three measured findings")
+divider("5", "Reflection",
+        "what we now believe, what we got wrong, and why either answer is useful")
+
+
+# =============================================================================
+# narration order — the single place slide sequence is decided
+# =============================================================================
+ORDER = [
+    "__title__",
+    "div:Aims and objectives",
+    "idea0", "idea1", "idea2",
+    "aims",
+    "div:Project presentation",
+    "Implementation",
+    "Why this is hard",
+    "In use",
+    "Channels",
+    "One test per sensor",
+    "Cross-device alignment",
+    "Privacy properties",
+    "div:Changes to the plan",
+    "Changes since the proposal",
+    "div:Results",
+    "Pilot study",
+    "Derived vibration channel",
+    "Effect of metric choice",
+    "Sync fiducial recovery",
+    "Unlabelled event detection",
+    "div:Reflection",
+    "Midway hypothesis",
+    "What we got wrong",
+    "Either outcome is useful",
+    "Scope and limitations",
+    "Standardising the disturbance",
+    "Remaining work",
+    "Contributions",
+    "Summary",
+]
+
+REG["__title__"] = prs.slides[0]
+missing = [k for k in ORDER if k not in REG]
+extra = [k for k in REG if k not in ORDER]
+if missing or extra:
+    sys.exit(f"ORDER mismatch\n  missing from REG: {missing}\n  never ordered: {extra}")
+
+_ids = {id(sl): e for sl, e in zip(prs.slides, list(sld_lst))}
+for e in list(sld_lst):
+    sld_lst.remove(e)
+for k in ORDER:
+    sld_lst.append(_ids[id(REG[k])])
 
 prs.save(OUT)
 print(f"wrote {OUT} — {len(prs.slides.__iter__.__self__._sldIdLst)} slides")
