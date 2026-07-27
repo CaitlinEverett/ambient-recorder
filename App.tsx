@@ -35,6 +35,7 @@ const hasMic = CovariateMicModule != null;
 export default function App() {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const startedAtMs = useRef(0);
   const [accel, setAccel] = useState<Vec>({ x: 0, y: 0, z: 0 });
   const [mag, setMag] = useState<Vec>({ x: 0, y: 0, z: 0 });
   const [pressure, setPressure] = useState<number>(NaN);
@@ -149,10 +150,17 @@ export default function App() {
       } catch { setMicOk(false); }
     }
 
+    // Elapsed is read from a wall-clock delta, not accumulated per tick. Counting
+    // `e + 1` per firing silently under-reports: with six sensor listeners live the
+    // JS thread delays and coalesces setInterval callbacks, so the counter falls
+    // behind real time and every rate derived from it (n / elapsed) is inflated by
+    // the same factor. Observed 2026-07-27: ~1.68x on every channel at once, which
+    // is the signature of a bad denominator rather than six fast sensors.
+    startedAtMs.current = Date.now();
     timer.current = setInterval(() => {
-      setElapsed((e) => e + 1);
+      setElapsed(Math.floor((Date.now() - startedAtMs.current) / 1000));
       setCounts({ ...c.current });
-    }, 1000);
+    }, 250);
 
     await activateKeepAwakeAsync();
     setRecording(true);
