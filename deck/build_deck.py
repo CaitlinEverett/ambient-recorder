@@ -157,7 +157,7 @@ def divider(num, name, answers):
     return d
 
 
-def citation_card(slide, y, venue, head, authors, quote, h=1.80):
+def citation_card(slide, y, venue, head, authors, quote, h=1.74):
     """A paper reference as native shapes — citation plus the exact sentence.
 
     Not a page screenshot. A two-column journal page rendered into a 5-inch box is
@@ -243,6 +243,35 @@ def cue(slide, label, detail):
          align=PP_ALIGN.CENTER, line=1.25)
 
 
+def cite(slide, body, y=6.98):
+    """A source line along the bottom. Held to 10.2 in so it clears the GT logo."""
+    return text(slide, 0.85, y, 10.2, 0.30, body, size=10.5, color=MUTED, line=1.15)
+
+
+def autoplay(slide, movie):
+    """Switch an embedded movie from click-to-play to play-on-slide-load.
+
+    add_movie() writes a p:video whose media node starts on
+    `<p:cond delay="indefinite"/>` — PowerPoint's "wait for a trigger". Setting
+    the delay to zero starts it with the slide. The condition is rewritten in
+    place rather than the timing tree rebuilt, so the structure stays whatever
+    python-pptx emits.
+    """
+    from pptx.oxml.ns import qn
+    timing = slide._element.find(qn('p:timing'))
+    if timing is None:
+        return movie
+    n = 0
+    for cond in timing.iter(qn('p:cond')):
+        if cond.get('delay') == 'indefinite':
+            cond.set('delay', '0')
+            cond.attrib.pop('evt', None)
+            n += 1
+    if not n:
+        raise RuntimeError("autoplay: no indefinite start condition found")
+    return movie
+
+
 def notes(slide, s):
     slide.notes_slide.notes_text_frame.text = s.strip()
 
@@ -251,11 +280,26 @@ def notes(slide, s):
 # 1 — title
 # =============================================================================
 s = new_slide(TITLE_TT, dark=True)
-text(s, 0.85, 2.45, 11.5, 1.2, "Covariate", size=60, bold=True, color=WHITE)
-text(s, 0.85, 3.60, 11.5, 1.0,
-     "A feasibility study of consumer-grade smartphone sensors for capturing "
-     "ambient experimental context", size=21, color=GOLD, line=1.25)
-text(s, 0.85, 4.85, 11.5, 1.0, [
+_hero = FIG / "hero_title.jpg"
+if _hero.exists():
+    from PIL import Image as _Im
+    _iw, _ih = _Im.open(_hero).size
+    _h = 5.55
+    _w = _h * _iw / _ih
+    s.shapes.add_picture(str(_hero), Inches(W - 0.85 - _w), Inches(0.95), Inches(_w))
+text(s, 0.85, 2.45, 8.2, 1.2, "Covariate", size=60, bold=True, color=WHITE)
+text(s, 0.85, 3.60, 8.2, 1.0,
+     "Can the sensors in an ordinary phone record the conditions an experiment ran "
+     "under \u2014 well enough to be worth keeping?", size=21, color=GOLD, line=1.25)
+_qr = FIG / "qr_repo_dark.png"
+if _qr.exists():
+    s.shapes.add_picture(str(_qr), Inches(0.85), Inches(5.52), Inches(1.15))
+    text(s, 2.20, 5.69, 5.6, 0.6, [
+        ("Open code and open data.", {"size": 14, "bold": True, "color": GOLD, "space": 3}),
+        ("github.com/CaitlinEverett/ambient-recorder",
+         {"size": 13, "color": RGBColor(0xC8, 0xD2, 0xDC)}),
+    ], line=1.2)
+text(s, 0.85, 4.72, 8.2, 1.0, [
     ("CS-7470  Mobile & Ubiquitous Computing  ·  Team 42", {"size": 15}),
     ("Caitlin Everett  ·  Christopher Kimberley", {"size": 15}),
 ], color=RGBColor(0xC8, 0xD2, 0xDC))
@@ -274,19 +318,68 @@ reproduce, there is something to look at.
 """)
 
 # =============================================================================
+# NEW — bottom line up front (3-step build)
+# =============================================================================
+# Successive slides rather than PowerPoint animations: python-pptx cannot write a
+# timeline, and a slide build survives export to PDF and to video untouched.
+# One line of body per point: four points under a picture strip leave ~0.62 in per
+# row, and a wrapped second line runs straight into the next heading.
+# One line of body per point. The title slide already asks the question, so this
+# starts at what we did rather than restating it.
+BLUF = [
+    (NAVY, "What we did.",
+     "Closed a door 24 times, gently then hard, while two phones recorded six channels."),
+    (TEAL, "It worked.",
+     "Every hard close peaked higher than every gentle one — 12.3 dB louder, 2.6× "
+     "the vibration. No overlap."),
+    (DEEPGOLD, "And there is a lot left.",
+     "The phones disagree on absolute values, one channel returned nothing, and we have "
+     "only tested a few devices."),
+]
+
+BW, BGAP = 3.20, 0.34
+BX = (W - (3 * BW + 2 * BGAP)) / 2
+
+for _n in (1, 2, 3):
+    s = new_slide()
+    title(s, "The short version", "three sentences, before any of the detail",
+          k=f"bluf{_n}")
+    for idx, name in enumerate(("bluf_app.jpg", "bluf_chris.jpg", "bluf_caitlin.jpg")):
+        x = BX + idx * (BW + BGAP)
+        s.shapes.add_picture(str(FIG / name), Inches(x), Inches(1.88), Inches(BW))
+    for idx, cap in enumerate(("six channels, live, on one clock",
+                               "the pilot rig, Toronto",
+                               "the same door protocol, Chicago")):
+        text(s, BX + idx * (BW + BGAP), 4.06, BW, 0.26, cap, size=11.5,
+             color=MUTED, align=PP_ALIGN.CENTER)
+    # One line of body per point: 9.6 in keeps it clear of the Georgia Tech logo,
+    # and a second wrapped line would run the third point into it.
+    y = 4.52
+    for k in range(_n):
+        col, head, body = BLUF[k]
+        hexagon(s, 0.85, y - 0.02, 0.52, str(k + 1), fill=col, size=13)
+        text(s, 1.62, y - 0.03, 9.6, 0.32, head, size=18, bold=True, color=NAVY)
+        text(s, 1.62, y + 0.31, 9.6, 0.30, body, size=13, color=MUTED)
+        y += 0.64
+    notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
 # 2 — the idea
 # =============================================================================
 # The same slide three times, adding one paper each. python-pptx cannot write
 # PowerPoint animations, so the reveal is built as successive slides — which also
 # survives export to PDF and to video without anyone clicking anything.
-COLLBERG = dict(
-    venue="Communications of the ACM 59(3):62\u201369 (2016)  \u00b7  doi.org/10.1145/2812803",
-    head="Repeatability in computer systems research",
-    authors="Collberg & Proebsting  \u00b7  601 papers, 8 ACM conferences and 5 journals",
-    quote="Code supporting a published result could be obtained and built for 32.3% of "
-          "them. In our own field, most published work cannot be repeated from what was "
-          "written down.",
+EDGE = dict(
+    venue="Biochemistry and Biophysics Reports 26:100987 (2021)  \u00b7  "
+          "doi.org/10.1016/j.bbrep.2021.100987",
+    head="The edge effect: the trouble with culturing cells in 96-well plates",
+    authors="Mansoury, Hamed, Karmustaji, Al Hannan & Safrany",
+    quote="Wells around the rim of a plate read up to 35% lower than wells in the middle "
+          "\u2014 same cells, same protocol, same plate. The cause is evaporation and a "
+          "temperature gradient across the room.",
 )
+
 ISOS = dict(
     venue="Nature Energy 5:35\u201349 (2020)  \u00b7  doi.org/10.1038/s41560-019-0529-5",
     head="Consensus statement for stability assessment and reporting for perovskite "
@@ -301,16 +394,21 @@ for _step in (0, 1, 2):
     title(s, "Why record the room",
           "the problem this is aimed at, and why it belongs in a ubicomp course",
           k=f"idea{_step}")
-    text(s, 0.85, 1.92, 11.4, 0.62,
-         "Two experiments run to the same written protocol still disagree. The difference "
-         "is in the room \u2014 and nobody records the room.",
-         size=18, bold=True, color=NAVY, line=1.25)
+    text(s, 0.85, 1.88, 11.4, 0.95, [
+        ("Two experiments run to the same protocol still disagree, and the difference "
+         "is the room.",
+         {"size": 18, "bold": True, "color": NAVY, "space": 7}),
+        ("Some labs do record it: ISO/IEC 17025 \u00a76.3.3 requires accredited labs to "
+         "monitor and record environmental conditions, with validated per-room systems "
+         "and scheduled recalibration. Everyone without a compliance budget writes down "
+         "nothing.", {"size": 13, "color": MUTED}),
+    ], line=1.25)
     # Two lines of intro at 18 pt end near 2.55 in. Cards stack from there with a
     # 0.12 in gutter; anything past 6.7 in collides with the Georgia Tech logo.
     if _step >= 1:
-        citation_card(s, 2.70, **COLLBERG)
+        citation_card(s, 3.02, **EDGE)
     if _step >= 2:
-        citation_card(s, 4.62, **ISOS)
+        citation_card(s, 4.88, **ISOS)
     notes(s, "PLACEHOLDER")
 
 
@@ -417,19 +515,18 @@ already owns, or it doesn't get used.
 # 4 — what we built
 # =============================================================================
 s = new_slide()
-title(s, "Implementation", "six channels, and a deployment boundary running straight "
-      "through the middle of them")
+title(s, "Implementation", "React Native; four channels install by QR code, six need "
+      "a compiled build")
 layers = [
-    (NAVY, "1", "Direct sensors", "expo-sensors  \u2014  no build step",
-     "accelerometer 50 Hz  \u00b7  magnetometer 25 Hz  \u00b7  barometer"),
-    (TEAL, "2", "Derived channel", "computed from the raw stream",
-     "vibration: gravity removed, RMS + peak over a 200 ms window"),
-    (DEEPGOLD, "3", "Native modules", "Swift on iOS, Kotlin on Android  \u2014  needs a compiled build",
-     "camera-EXIF light  \u00b7  microphone LEVEL only \u2014 audio is never recorded, so "
-     "there is no waveform to leak"),
+    (NAVY, "1", "Direct sensors", "expo-sensors  \u2014  ships inside Expo Go",
+     "accelerometer 50 Hz  \u00b7  magnetometer 25 Hz  \u00b7  barometer ~1 Hz"),
+    (TEAL, "2", "Derived channel", "computed in JS from the raw stream",
+     "vibration: gravity low-passed and subtracted, then RMS + peak over 200 ms"),
+    (DEEPGOLD, "3", "Native modules", "Swift and Kotlin  \u2014  needs a dev build",
+     "microphone LEVEL only, never audio  \u00b7  light via camera EXIF, because iOS "
+     "exposes no ambient-light API to apps"),
     (OLDGOLD, "4", "Session record", "one session, one JSON file",
-     "metadata  \u00b7  placement  \u00b7  per-channel sampling health  \u00b7  one shared clock, "
-     "aligned across devices by a haptic fiducial"),
+     "metadata  \u00b7  placement  \u00b7  per-channel sampling health  \u00b7  one shared clock"),
 ]
 y = 2.24
 for col, num, name, how, what in layers:
@@ -439,15 +536,14 @@ for col, num, name, how, what in layers:
     text(s, 1.66, y + 0.42, 10.6, 0.5, what, size=14, color=MUTED, line=1.2)
     y += 1.06
 
-# Both lines stay single-line at this width: a second wrapped line puts the body
-# into the Georgia Tech logo, which sits from about 6.85 in down.
-text(s, 0.85, 6.22, 9.9, 0.62, [
-    ("Two tiers, and the gap between them is a result.",
+text(s, 0.85, 6.22, 10.4, 0.62, [
+    ("Expo Go is a pre-built container with a fixed set of native modules.",
      {"size": 16, "bold": True, "color": NAVY, "space": 4}),
-    ("Four channels install by scanning a QR code. All six need a compiled dev client "
-     "\u2014 the hardware is universal, access to it is not.",
-     {"size": 14, "color": MUTED}),
+    ("Anything outside that set cannot be loaded into it \u2014 so two channels cost us "
+     "the thirty-second install.", {"size": 14, "color": MUTED}),
 ], line=1.2)
+cite(s, "expo-sensors ships Accelerometer, Gyroscope, Magnetometer, Barometer, "
+        "DeviceMotion, Pedometer and LightSensor (Android only).")
 notes(s, "PLACEHOLDER")
 
 
@@ -597,24 +693,24 @@ building. The report says all of that, along with what we do about it.
 # 8 — what changed
 # =============================================================================
 s = new_slide()
-title(s, "Changes since the proposal")
+title(s, "Changes since the proposal", "each one forced by something we hit")
 hex_rows(s, [
-    ("Scope was cut to four channels, then won back to six.",
-     "Light and sound level need a compiled dev client, so the pilot ran on the four Expo Go "
-     "channels. The dev client now builds and all six run \u2014 a dropped feature became a "
-     "measured deployment boundary."),
-    ("Multi-site study reclassified as a case study.",
-     "With one participant per site, person, city, phone model and building are confounded. "
-     "The quantitative claims moved to a within-site design with a trial count that can "
-     "support them."),
-    ("The team went from two to one, and the protocol followed.",
-     "The standardised pendulum ladder was displaced by an ambient-condition experiment \u2014 "
-     "a running dehumidifier, switched on and off \u2014 because it tests the project's actual "
-     "claim rather than characterising the instrument."),
-    ("We pre-registered.",
-     "Metrics, windows, exclusion rules and trial counts are frozen in the repository, dated, "
-     "before the data existed."),
-], top=2.20, gap=1.26, fill=OLDGOLD)
+    ("Alka-Seltzer dissolution \u2192 door closes.",
+     "The dissolution study needed light and sound level. Both are native modules, and Expo "
+     "Go \u2014 the thing that makes the app installable by scanning a code \u2014 cannot load "
+     "them. We swapped to an event the four Expo Go channels can actually see."),
+    ("Then the dev client built, and all six came back.",
+     "What looked like a dropped feature turned into a measured result: four channels "
+     "install in thirty seconds, six need a toolchain. The hardware is universal; access "
+     "to it is not."),
+    ("Multi-site study \u2192 case study.",
+     "Our TA pointed out that three sites with one person each confound person, city, "
+     "phone model and building. That was correct, and the quantitative claims moved to a "
+     "within-site design with a trial count able to carry them."),
+    ("We started measuring the instrument, not just the room.",
+     "Once we could read our own numbers, three defects surfaced in a week \u2014 a clock, a "
+     "health check, and a magnet. Each one changed what we build next."),
+], top=2.20, gap=1.24, fill=OLDGOLD)
 notes(s, """
 Three things changed.
 
@@ -648,24 +744,25 @@ frozen in the repository, dated, before the data existed.
 s = new_slide()
 title(s, "The experiment, line by line",
       "one continuous recording, three devices, ten minutes")
-picture(s, "mockup_protocol.png", top=1.95, bottom=6.95, max_w=7.4, x=0.85)
-text(s, 8.55, 2.10, 3.95, 4.3, [
-    ("2 \u00d7 3, and the machine is the point.",
-     {"size": 17, "bold": True, "color": NAVY, "space": 10}),
-    ("Machine {off, on} \u00d7 door {none, normal, slam}. The door trials are the "
-     "measurement; the dehumidifier is the unrecorded ambient condition nobody "
-     "would write in a methods section.",
-     {"size": 13.5, "color": MUTED, "space": 12}),
+# One clip in the deck, not two: the footage of the run itself lives on the
+# next slide, where it sits beside the collaborator's pilot and earns the time.
+picture(s, "mockup_protocol.png", top=1.95, bottom=6.80, max_w=8.05, x=0.85)
+text(s, 9.30, 2.06, 3.25, 4.4, [
+    ("2 \u00d7 3.",
+     {"size": 16, "bold": True, "color": NAVY, "space": 7}),
+    ("Machine {off, on} \u00d7 door {none, normal, slam}. The dehumidifier is the "
+     "ambient condition nobody writes in a methods section.",
+     {"size": 12.5, "color": MUTED, "space": 11}),
     ("One recording, not six.",
-     {"size": 17, "bold": True, "color": NAVY, "space": 10}),
+     {"size": 16, "bold": True, "color": NAVY, "space": 7}),
     ("Every cell on one clock and one thermal state, so the machine is the only "
-     "thing that changes. Cells are cut out afterwards by timer reading.",
-     {"size": 13.5, "color": MUTED, "space": 12}),
-    ("The question it can answer:",
-     {"size": 17, "bold": True, "color": DEEPGOLD, "space": 10}),
+     "thing that changes.",
+     {"size": 12.5, "color": MUTED, "space": 11}),
+    ("What it can answer:",
+     {"size": 16, "bold": True, "color": DEEPGOLD, "space": 7}),
     ("whether a running appliance pushes a normal close below detectability while "
-     "a slam still comes through. A threshold, not a ratio.",
-     {"size": 13.5, "color": MUTED}),
+     "a slam still gets through.",
+     {"size": 12.5, "color": MUTED}),
 ], line=1.28)
 notes(s, "PLACEHOLDER")
 
@@ -674,7 +771,9 @@ notes(s, "PLACEHOLDER")
 # NEW — why n = 6
 # =============================================================================
 s = new_slide()
-title(s, "Why n = 6", "the trial count fixes the smallest p obtainable, before any data exists")
+title(s, "Designing it was harder than running it",
+      "the trial count fixes the smallest p obtainable, before any data exists",
+      k="Why n = 6")
 picture(s, "mockup_why_n6.png", top=1.95, bottom=6.90, max_w=7.4, x=0.85)
 text(s, 8.55, 2.10, 3.95, 4.3, [
     ("This is the pilot's real defect.",
@@ -696,32 +795,62 @@ notes(s, "PLACEHOLDER")
 
 
 # =============================================================================
-# NEW — six channels live, and an unlooked-for heterogeneity result
+# NEW — what the instrument measured
 # =============================================================================
 s = new_slide()
-title(s, "All six channels, one clock",
-      "a six-second session on the dev client \u2014 and a result we were not looking for")
-s.shapes.add_picture(str(FIG / "live_channels.png"), Inches(0.85), Inches(2.18),
-                     Inches(6.15))
-text(s, 7.45, 2.20, 5.05, 3.6, [
-    ("Requested 50 Hz. Got 84.",
-     {"size": 18, "bold": True, "color": NAVY, "space": 5}),
-    ("502 accelerometer samples in six seconds. Magnetometer: 42 against a nominal "
-     "25. Both overshoot by the same 1.68\u00d7.",
-     {"size": 13.5, "color": MUTED, "space": 13}),
-    ("The pilot phone did not.",
-     {"size": 18, "bold": True, "color": NAVY, "space": 5}),
-    ("Same code, an iPhone X: 50.2 and 25.1 Hz, measured from the exported files. "
-     "Device heterogeneity, in two of our own phones.",
-     {"size": 13.5, "color": MUTED, "space": 13}),
-    ("And it moves the derived channel.",
-     {"size": 18, "bold": True, "color": DEEPGOLD, "space": 5}),
-    ("Vibration runs at 8 Hz here and 5 in the pilot \u2014 so the 200 ms window is "
-     "counted in samples, not milliseconds. On this device it is really ~119 ms.",
-     {"size": 13.5, "color": MUTED, "space": 13}),
-    ("A constant we froze in the pre-registration turns out to be device-dependent.",
-     {"size": 13.5, "bold": True, "color": NAVY}),
-], line=1.25)
+title(s, "What the instrument measured",
+      "24 door trials, two devices recording simultaneously, one table")
+table(s,
+      [("", 0.85, 2.5), ("normal close  (n = 13)", 3.5, 3.3),
+       ("slam  (n = 11)", 6.9, 3.0), ("separation", 10.0, 2.6)],
+      [(("acoustic peak", NAVY, True), "\u221226.1 dBFS\n[\u221233.5, \u221221.8]",
+        ("\u221213.8 dBFS\n[\u221218.3, \u221210.8]", TEAL, True), ("+12.3 dB\nno overlap", TEAL, True)),
+       (("derived vibration", NAVY, True), "0.0039 g\n[0.0023, 0.0062]",
+        ("0.0102 g\n[0.0071, 0.0125]", TEAL, True), ("2.60\u00d7\nno overlap", TEAL, True)),
+       (("replicated on device 2", NAVY, True), "4.3\u00d7 noise floor",
+        ("12.0\u00d7 noise floor", TEAL, True), ("2.77\u00d7\nno overlap", TEAL, True))],
+      top=2.30, row_h=0.88, size=13.5)
+text(s, 0.85, 5.55, 11.5, 1.1, [
+    ("Not one normal close exceeded any slam \u2014 on either channel, on either device.",
+     {"size": 18, "bold": True, "color": NAVY, "space": 7}),
+    ("Complete separation at 13 versus 11 gives a minimum attainable one-tailed "
+     "p of 1/C(24,13) = 4.0 \u00d7 10\u207b\u2077. This is the confirmatory dose\u2013response the "
+     "analysis plan was built around, and it replicated independently on a second "
+     "device in the same run.", {"size": 14, "color": MUTED}),
+], line=1.3)
+cite(s, "Noise floor and windowing follow CS-7470 L5-06 (Noise). Gravity-subtracted "
+        "derivation after Mizell, ISWC 2003, and CS-7470 L5-03 (IMU / Gravity).")
+notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
+# NEW — cross-device agreement, and cross-device disagreement
+# =============================================================================
+s = new_slide()
+title(s, "Two phones, one table",
+      "they agree about change and disagree about absolute value \u2014 both are results")
+for i, (col, head, body) in enumerate([
+    (TEAL, "Agreement on change:  r = 0.97",
+     "Two devices, 24 shared events. Pearson r = 0.970 on acoustic peak and 0.971 on "
+     "the derived vibration channel, against a threshold we fixed in advance of 0.90. "
+     "Event timing matched to a median 33 ms \u2014 one sample \u2014 with no fiducial, on "
+     "starts 76 ms apart. H2 passes."),
+    (DEEPGOLD, "Disagreement on absolutes:  measured, not cited",
+     "Same table, same second: barometers differ by 0.675 hPa (5.6 m of equivalent "
+     "altitude); resting acoustic level by 7.8 dB; noise floors across four devices by "
+     "2.4\u00d7. One device read the magnetic field at 664 \u00b5T while the other read 41 \u2014 "
+     "a magnet was attached to it, and no other channel noticed."),
+]):
+    yy = 2.20 + i * 2.05
+    hexagon(s, 0.85, yy - 0.02, 0.60, "\u2713" if i == 0 else "\u0394", fill=col, size=15)
+    text(s, 1.75, yy, 10.6, 0.4, head, size=20, bold=True, color=NAVY)
+    text(s, 1.75, yy + 0.46, 10.6, 1.3, body, size=14, color=MUTED, line=1.3)
+text(s, 0.85, 6.32, 10.4, 0.34,
+     "Relative change within a session is now a measured constraint, not a borrowed "
+     "caution.", size=15, bold=True, color=NAVY)
+cite(s, "CS-7470 L5-07 (Sensor Calibration). Device-dependent bias: McNicholas & Mass, "
+        "Wea. Forecasting 2021; Stisen et al., SenSys 2015; Kuhlmann et al., Behav. Res. "
+        "Methods 2021.")
 notes(s, "PLACEHOLDER")
 
 
@@ -729,13 +858,33 @@ notes(s, "PLACEHOLDER")
 # 9 — the pilot (video cue)
 # =============================================================================
 s = new_slide()
-title(s, "Pilot study", "two baselines, two normal door closes, two slams; one phone, one room")
-cue(s, "▶  Footage: door experiment, narrated by Christopher Kimberley",
-    "let it run · caption over any cut: “protocol continues — 4 further trials”")
-text(s, 1.15, 5.55, 11.1, 0.9,
-     "Six sessions on an iPhone X, exported as JSON. The three results that follow were "
-     "obtained from those files alone, in a different city, without further input from the "
-     "person who recorded them.", size=15, color=MUTED, line=1.25)
+title(s, "Pilot study", "the same door protocol in two cities, eight weeks apart")
+# Embedded rather than dragged in: build_deck.py regenerates the file from
+# scratch, so anything added by hand in PowerPoint is lost on the next build.
+# 16 s — Chris's Toronto trial, then the same protocol in Chicago.
+MOVIE = Path("media/pilot_two_sites.mp4")
+if MOVIE.exists():
+    mv = s.shapes.add_movie(str(MOVIE), Inches(1.05), Inches(2.02),
+                            Inches(2.60), Inches(4.62),
+                            poster_frame_image="media/pilot_poster.jpg",
+                            mime_type="video/mp4")
+    autoplay(s, mv)
+text(s, 4.35, 2.15, 8.0, 4.4, [
+    ("Same protocol, two cities.",
+     {"size": 20, "bold": True, "color": NAVY, "space": 9}),
+    ("Christopher Kimberley ran the pilot in Toronto \u2014 two baselines, two normal door "
+     "closes, two slams, on an iPhone X. The blue marker on the door edge is his "
+     "repeatability control: the same closed position every trial.",
+     {"size": 15, "color": MUTED, "space": 12}),
+    ("The second half is the same action in Chicago, on different hardware, in a "
+     "different building, eight weeks of app development later.",
+     {"size": 15, "color": MUTED, "space": 12}),
+    ("Six sessions, exported as JSON. Every result that follows was obtained from those "
+     "files alone \u2014 in a different city, without further input from the person who "
+     "recorded them.", {"size": 15, "color": MUTED, "space": 12}),
+    ("That is the whole point of a portable record.",
+     {"size": 15, "bold": True, "color": NAVY}),
+], line=1.3)
 notes(s, """
 [CUE — play Chris's door-experiment footage, 10 to 15 seconds]
 
@@ -1000,29 +1149,73 @@ check against the known elevation of the room.
 s = new_slide()
 title(s, "What we got wrong", "three, and two of them are about our own product")
 for i, (col, head, body) in enumerate([
-    (GOLD, "The app accepted six sessions it should have refused.",
-     "All six pilot sessions are stored as condition \u201ccontrolled\u201d, including both "
-     "slams \u2014 and with site and notes left empty in every one. The distance from "
-     "phone to door is the largest single determinant of measured amplitude, and "
-     "it is not in the record, so the two-site comparison cannot be made "
-     "rigorously. We are building an instrument to capture what nobody writes "
-     "down, and it let us not write it down."),
+    (GOLD, "We built an instrument that doesn\u2019t insist.",
+     "Condition defaults to \u201ccontrolled\u201d, and site, notes and placement are all "
+     "optional \u2014 so a session can be saved with none of them and the app never asks. "
+     "Every session we have recorded, on both sides of the project, came out that way. "
+     "Distance from phone to door is the largest single determinant of amplitude and it "
+     "is in none of the files, which is why the two-site comparison can\u2019t be made "
+     "rigorously. Nobody operated it wrong; the tool never made it easy to operate "
+     "right. It is the first thing we are fixing."),
     (DEEPGOLD, "Six sensors appeared to disagree with their own spec.",
-     "The dev client reported every channel overshooting its nominal rate by the "
-     "same 1.68\u00d7 \u2014 including a barometer reading 2 Hz when the hardware runs at "
-     "1. Six independent sensors do not agree on an error; a shared denominator "
-     "does. The elapsed timer counted setInterval firings rather than seconds, "
-     "and the JS thread was dropping them under sensor load."),
+     "The dev client reported every channel overshooting its nominal rate by the same "
+     "1.68\u00d7 \u2014 including a barometer reading 2 Hz when the hardware runs at 1. Six "
+     "independent sensors do not agree on an error; a shared denominator does. The "
+     "elapsed timer counted setInterval firings rather than seconds, and the JS thread "
+     "was dropping them under sensor load."),
     (DEEPGOLD, "There is no single best channel.",
-     "The derived vibration channel beats the raw accelerometer on sensitivity and "
-     "loses to it on cross-device agreement, because each device runs its own "
-     "window clock. Sensitivity and comparability trade against each other, and we "
-     "did not expect that."),
+     "The derived vibration channel beats the raw accelerometer on sensitivity and loses "
+     "to it on cross-device agreement, because each device runs its own window clock. "
+     "Sensitivity and comparability trade against each other, and we did not expect "
+     "that."),
 ]):
     yy = 2.12 + i * 1.66
     hexagon(s, 0.85, yy - 0.02, 0.58, str(i + 1), fill=col, size=14)
     text(s, 1.72, yy, 10.6, 0.38, head, size=18, bold=True, color=NAVY)
-    text(s, 1.72, yy + 0.40, 10.6, 1.15, body, size=13.5, color=MUTED, line=1.2)
+    text(s, 1.72, yy + 0.40, 10.6, 1.15, body, size=13, color=MUTED, line=1.2)
+notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
+# NEW — what happens next
+# =============================================================================
+s = new_slide()
+title(s, "What happens next", "five days of it, and the version that outlives the term")
+text(s, 0.85, 1.92, 5.6, 0.3, "THIS WEEK", size=12, bold=True, color=DEEPGOLD)
+text(s, 6.95, 1.92, 5.5, 0.3, "AFTER THAT", size=12, bold=True, color=TEAL)
+WEEK = [
+    ("The other machine state", "completes the 2 \u00d7 3; ten minutes"),
+    ("Magnet off, six closes", "turns tonight's staging error into a controlled test"),
+    ("Log the light module", "returns nil, or throws? \u201cunsupported\u201d vs \u201cbroken\u201d"),
+    ("The overnight run", "barometer against a weather station; the sampling gate"),
+    ("Distance ladder \u2014 0.5, 1, 2 m", "makes Toronto and Chicago comparable at last"),
+]
+y = 2.32
+for head, body in WEEK:
+    text(s, 0.85, y, 5.6, 0.26, "\u2022  " + head, size=14, bold=True, color=NAVY)
+    text(s, 1.16, y + 0.26, 5.3, 0.26, body, size=12.5, color=MUTED)
+    y += 0.72
+
+AFTER = [
+    ("Baseline every device on the market",
+     "every calibration run contributes a noise floor keyed to device model, so the app "
+     "can tell any phone whether it resolves the effect you declared"),
+    ("Refuse the devices that cannot",
+     "a capability tier, not a disclaimer \u2014 warn or decline below threshold"),
+    ("A channel-to-experiment matrix",
+     "which sensors suit which kinds of experiment, published rather than guessed"),
+    ("The sled",
+     "external sensors over BLE where the phone's own are the limit"),
+]
+y = 2.32
+for head, body in AFTER:
+    text(s, 6.95, y, 5.5, 0.26, "\u2022  " + head, size=14, bold=True, color=NAVY)
+    text(s, 7.26, y + 0.26, 5.2, 0.5, body, size=12.5, color=MUTED, line=1.2)
+    y += 0.98
+
+text(s, 0.85, 6.30, 10.4, 0.34,
+     "The first column is homework. The second is the reason the homework is worth doing.",
+     size=15, bold=True, color=NAVY)
 notes(s, "PLACEHOLDER")
 
 
@@ -1058,15 +1251,75 @@ notes(s, "PLACEHOLDER")
 
 
 # =============================================================================
+# NEW — works cited
+# =============================================================================
+s = new_slide(dark=True)
+title(s, "Works cited", dark=True)
+LIT = [
+    "Mansoury, Hamed, Karmustaji, Al Hannan & Safrany (2021). The edge effect:",
+    "    the trouble with culturing cells in 96-well plates.  Biochemistry and",
+    "    Biophysics Reports 26, 100987.  doi:10.1016/j.bbrep.2021.100987",
+    "Khenkin, Katz, Abate et al. (2020). Consensus statement \u2026 perovskite photovoltaics.",
+    "    Nature Energy 5, 35\u201349.  doi:10.1038/s41560-019-0529-5",
+    "Mizell (2003). Using gravity to estimate accelerometer orientation.  ISWC \u201903, 252\u2013253.",
+    "Zhang, Beresford & Sheret (2019). SensorID: sensor calibration fingerprinting",
+    "    for smartphones.  IEEE Symposium on Security and Privacy.",
+    "Stisen, Blunck, Bhattacharya et al. (2015). Smart devices are different.",
+    "    SenSys \u201915, 127\u2013140.  doi:10.1145/2809695.2809718",
+    "Peguero, Labrador & Cook (2016). Assessing jitter in sensor time series from",
+    "    Android mobile devices.  IEEE SMARTCOMP.  doi:10.1109/SMARTCOMP.2016.7501679",
+    "McNicholas & Mass (2021). Bias correction \u2026 smartphone pressure observations.",
+    "    Weather and Forecasting 36(5), 1867\u20131889.  doi:10.1175/WAF-D-20-0222.1",
+    "Kuhlmann, Garaizar & Reips (2021). Smartphone sensor accuracy varies from device",
+    "    to device.  Behavior Research Methods 53(1), 22\u201333.  doi:10.3758/s13428-020-01404-5",
+    "ISO/IEC 17025:2017, clause 6.3.3 \u2014 monitoring, control and recording of",
+    "    environmental conditions in accredited testing and calibration laboratories.",
+    "Harris, ed. (2019). NISTIR 6969, Selected Laboratory and Measurement Practices",
+    "    and Procedures \u2014 laboratory siting and environmental requirements.",
+    "Kardous & Shaw (2016). Evaluation of smartphone sound measurement applications",
+    "    using external microphones.  JASA 140(4), EL327\u2013EL333.  doi:10.1121/1.4964639",
+]
+COURSE = [
+    "CS-7470 Mobile & Ubiquitous Computing \u2014 T. Ploetz, T. Starner",
+    "",
+    "L4-05   Magnetometer",
+    "L4-06   Barometer",
+    "L4-08   Ambient Light Sensor",
+    "L5-03   IMU / Gravity",
+    "L5-04, L5-05   Sampling Rate",
+    "L5-06   Noise",
+    "L5-07   Sensor Calibration",
+]
+text(s, 0.85, 2.16, 7.5, 4.6, "\n".join(LIT), size=10.5,
+     color=RGBColor(0xC8, 0xD2, 0xDC), line=1.45)
+text(s, 8.75, 2.16, 3.8, 4.6, "\n".join(COURSE), size=11.5,
+     color=RGBColor(0xC8, 0xD2, 0xDC), line=1.6)
+text(s, 8.75, 1.80, 3.8, 0.3, "COURSE MATERIAL", size=11, bold=True, color=GOLD)
+text(s, 8.75, 4.90, 3.8, 0.3, "AI ASSISTANCE", size=11, bold=True, color=GOLD)
+text(s, 8.75, 5.24, 3.8, 1.6, [
+    ("Claude \u2014 Sonnet and Opus (Anthropic)",
+     {"size": 11.5, "bold": True, "space": 5}),
+    ("Used throughout as a learning aid, coding mentor and analysis partner: study "
+     "design review, Python analysis, figure generation, and iterative critique.",
+     {"size": 10.5, "space": 5}),
+    ("All measurements were run, and all conclusions checked, by the authors.",
+     {"size": 10.5}),
+], color=RGBColor(0xC8, 0xD2, 0xDC), line=1.35)
+text(s, 0.85, 1.80, 7.5, 0.3, "LITERATURE", size=11, bold=True, color=GOLD)
+notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
 # 17 — contributions
 # =============================================================================
 s = new_slide(dark=True)
 title(s, "Contributions", "who did what", dark=True)
 for i, (initials, name, role) in enumerate([
         ("CK", "Christopher Kimberley",
-         "the door-slam pilot — protocol, recording, and the six sessions"),
+         "derived sensor code, door-slam pilot protocol design, recording, "
+         "and six test sessions"),
         ("CE", "Caitlin Everett",
-         "the recorder, the export schema, the analysis, and the study design")]):
+         "product and study design, live tests, recording, export schema, analysis")]):
     yy = 3.05 + i * 1.60
     hexagon(s, 0.85, yy - 0.04, 0.68, initials, fill=GOLD, fg=NAVY, size=15)
     text(s, 1.90, yy, 10.5, 0.4, name, size=22, bold=True, color=WHITE)
@@ -1083,19 +1336,26 @@ analysis and the study design are mine.
 # =============================================================================
 s = new_slide(dark=True)
 title(s, "Summary", dark=True)
-text(s, 0.85, 2.35, 11.5, 3.4, [
-    ("The recorder works. All six channels run, and the derived vibration channel measures "
-     "a real physical event at 13 to 109 times its own noise floor.",
-     {"size": 20, "color": WHITE, "space": 16}),
-    ("This is a feasibility result, not a reproducibility result \u2014 and that distinction is "
-     "the honest version of what one term buys.",
-     {"size": 20, "color": WHITE, "space": 16}),
-    ("Whether a phone is a good enough instrument is still open. Whether it is a good enough "
-     "recorder is not: that part works either way.",
-     {"size": 20, "color": GOLD, "space": 16}),
-    ("The pre-registered study runs this week.",
-     {"size": 20, "color": WHITE}),
+REPO = "github.com/CaitlinEverett/ambient-recorder"
+text(s, 0.85, 2.20, 8.9, 3.6, [
+    ("The recorder works. All six channels run, and the derived vibration channel "
+     "measures a real physical event at 13 to 109 times its own noise floor.",
+     {"size": 20, "color": WHITE, "space": 15}),
+    ("This is a feasibility result, not a reproducibility result. It is the best we "
+     "could do in a tight window.",
+     {"size": 20, "color": WHITE, "space": 15}),
+    ("Whether a phone is a good enough instrument is still open. Whether it is a good "
+     "enough recorder is not.",
+     {"size": 20, "color": GOLD, "space": 15}),
+    ("More studies run this week. The code and the data are public \u2014 scan the code, "
+     "or:", {"size": 20, "color": WHITE, "space": 8}),
+    (REPO, {"size": 20, "bold": True, "color": GOLD}),
 ], line=1.3)
+_qr2 = FIG / "qr_repo_dark.png"
+if _qr2.exists():
+    s.shapes.add_picture(str(_qr2), Inches(10.05), Inches(4.55), Inches(2.15))
+    text(s, 9.85, 6.82, 2.55, 0.3, "scan to contribute", size=12,
+         color=RGBColor(0xC8, 0xD2, 0xDC), align=PP_ALIGN.CENTER)
 notes(s, """
 And the one that stung.
 
@@ -1121,7 +1381,7 @@ divider("3", "Changes to the plan",
 divider("4", "Results",
         "one pilot, three measured findings")
 divider("5", "Reflection",
-        "what we now believe, what we got wrong, and why either answer is useful")
+        "what was hard, what we got wrong, and what we do next")
 
 
 # =============================================================================
@@ -1129,6 +1389,7 @@ divider("5", "Reflection",
 # =============================================================================
 ORDER = [
     "__title__",
+    "bluf1", "bluf2", "bluf3",
     "div:Aims and objectives",
     "idea0", "idea1", "idea2",
     "aims",
@@ -1143,21 +1404,27 @@ ORDER = [
     "div:Changes to the plan",
     "Changes since the proposal",
     "div:Results",
+    # The experiment beat is one compact block — the protocol card, then the
+    # footage of it being run, then what came out. The n = 6 arithmetic moved
+    # to Reflection: it is a lesson about designing a study, not a result.
     "The experiment, line by line",
-    "Why n = 6",
-    "All six channels, one clock",
     "Pilot study",
+    "What the instrument measured",
+    "Two phones, one table",
     "Derived vibration channel",
     "Effect of metric choice",
     "Sync fiducial recovery",
     "Unlabelled event detection",
     "div:Reflection",
-    "Midway hypothesis",
+    "Why n = 6",
     "What we got wrong",
     "Either outcome is useful",
+    "Midway hypothesis",
+    "What happens next",
     "Scope and limitations",
     "Standardising the disturbance",
     "Remaining work",
+    "Works cited",
     "Contributions",
     "Summary",
 ]
@@ -1185,7 +1452,7 @@ if LEAN:
         "Channels", "One test per sensor", "Cross-device alignment",
         "Privacy properties", "Sync fiducial recovery", "Unlabelled event detection",
         "Scope and limitations", "Standardising the disturbance", "Remaining work",
-        "Effect of metric choice",
+        "Effect of metric choice", "Derived vibration channel",
     }
     for k in CUT:
         e = _ids[id(REG[k])]

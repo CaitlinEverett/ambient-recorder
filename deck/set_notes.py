@@ -1,13 +1,23 @@
 """Speaker notes and the time budget, keyed to the video grading rubric.
 
+Written flat and declarative — short sentences, no rhetorical transitions, no
+throat-clearing. They are read aloud by someone short on time who wants the point
+to land, so the affect has to carry the argument rather than decorate it. Detail a
+listener needs to follow the narrative stays; anything that only signals effort is
+gone.
+
+The narrative arc, which the slide order now follows:
+  phones are cheap and experiments fail  ->  so we built a recorder  ->  here is
+  the simplest experiment that could test it  ->  here is what we learned,
+  including how hard the designing was  ->  it was not a wash  ->  what we believe
+  right now  ->  what we would build with more time  ->  come help.
+
 The rubric caps length at 8 minutes and calls the maximum strict, so every slide
 carries a second budget and the total is asserted at the bottom — the build fails
-rather than quietly running long. Notes are bullets to talk from, not a script to
-read; reading a script on camera is audible.
+rather than quietly running long.
 
-This is the LEAN deck: cut slides are absent from the file rather than hidden, so
-what is open while filming is only what will be narrated. `LEAN= python3
-build_deck.py` writes the full 35-slide version for the written report.
+`LEAN= python3 build_deck.py` writes the full version, with the cut slides, for
+the written report.
 """
 import re
 import sys
@@ -18,329 +28,378 @@ DECK = "Covariate_Demo.pptx"
 
 NOTES = {
 
-# -- open --------------------------------------------------------------------
-1: """≈15s  ·  OPEN
+1: """≈12s  ·  OPEN
 
-• Covariate. A feasibility study: can consumer-grade phone sensors capture ambient
-  experimental context well enough to be worth attaching to a record?
-• CS-7470, Team 42. Caitlin Everett and Christopher Kimberley.
-• Flat statement of what comes next — aims, what we built, what changed, what we
-  measured, what we think now.
+Covariate. CS-7470, Team 42 — Caitlin Everett and Christopher Kimberley.
+
+Phones are cheap, most of us already carry one, and a lot of experiments don't
+reproduce. So we wanted to know whether the sensors already inside an ordinary
+phone are good enough to record the conditions an experiment ran under.
+
+To be clear: we are not using the phone to run experiments. It records the
+conditions in the room while an experiment happens.
+""",
+
+# -- the short version --------------------------------------------------------
+2: """≈13s  ·  SHORT VERSION — 1 of 3: WHAT WE DID
+
+We built an app in Expo Go, and added two native sensors Expo Go doesn't ship with.
+Then we designed about the simplest experiment there is: close a door 24 times,
+gently and then hard, with two phones on the table recording six channels at once.
+
+The interesting channel isn't sensed. It's computed. An accelerometer at rest reads
+one g, not zero, because gravity is always in the number. A door close is about one
+percent on top of that. So we estimate gravity, subtract it, and measure what's
+left.
+""",
+
+3: """≈9s  ·  SHORT VERSION — 2 of 3: IT WORKED
+
+It separated cleanly. Every hard close produced a larger peak than every gentle one,
+with no overlap. On the microphone, hard closes peaked 12.3 decibels higher. On the
+derived vibration channel, 2.6 times higher, in g.
+
+Both channels. Both phones. Same answer.
+""",
+
+4: """≈9s  ·  SHORT VERSION — 3 of 3: WHAT'S LEFT
+
+The two phones disagree about absolute values — pressure, loudness, magnetic field.
+So we report change within a session, not absolutes.
+
+One channel returned nothing for eight minutes while the app called it healthy. And
+we have only tested a few devices.
+
+Promising, bounded, unfinished.
 """,
 
 # -- section 1 · AIMS AND OBJECTIVES -----------------------------------------
-2: """≈3s  ·  DIVIDER
+5: """≈3s  ·  DIVIDER
 
-• Say it out loud: "Aims and objectives."
+"Aims and objectives."
 """,
 
-3: """≈14s  ·  WHY RECORD THE ROOM  (1 of 3 — no papers yet)
+6: """≈11s  ·  WHY RECORD THE ROOM — 1 of 3
 
-• Two people run the same written protocol and get different answers.
-• The difference usually isn't in the protocol. It's in everything around it that
-  nobody wrote down.
-• Bread is the everyday version — same recipe, different kitchen, different loaf.
-  Nobody writes down the humidity.
+Two people run the same written protocol and get different answers. The difference
+usually isn't in the protocol. It's in everything around it that nobody wrote down.
+
+Some labs do record it, because they have to. Accredited labs run validated
+monitoring systems. Everyone without a compliance budget records nothing.
 """,
 
-4: """≈12s  ·  + COLLBERG & PROEBSTING  (2 of 3)
+7: """≈10s  ·  + THE EDGE EFFECT — 2 of 3
 
-• Start in our own field, so it isn't somebody else's problem. Collberg and
-  Proebsting went after 601 papers from eight ACM conferences and five journals.
-• They tried to get the code and build it. Succeeded for 32.3%.
-• Most published computer systems work can't be repeated from what was written
-  down — and that's the field with version control.
+Cells cultured in the outer wells of a 96-well plate read up to 35% lower than the
+wells in the middle. Same cells, same protocol, same plate.
+
+The cause is evaporation and a temperature gradient across the room. Not a technique
+problem. A room problem, and a thermometer would have caught it.
 """,
 
-5: """≈12s  ·  + THE ISOS CONSENSUS  (3 of 3)
+8: """≈11s  ·  + THE ISOS CONSENSUS — 3 of 3
 
-• The interesting case is what a field does once it admits this.
-• Perovskite solar cells: results weren't comparable between labs, because everyone
-  tested under different ambient conditions and reported different parameters.
-  Nature Energy, 2020 — a consensus statement across the field.
-• The fix wasn't a better measurement. It was agreeing on which conditions have to
-  be written down: temperature, humidity, illumination, atmosphere, bias.
-• That's the whole argument in one citation. The ambient conditions were always
-  affecting the result. They just weren't in the record until somebody decided they
-  had to be.
+Perovskite solar cell results weren't comparable between labs, because everyone
+tested under different ambient conditions and reported different parameters. So the
+field wrote a consensus statement, in Nature Energy, agreeing on what has to be
+recorded: temperature, humidity, illumination, atmosphere, electrical bias.
+
+The fix wasn't a better measurement. It was deciding which conditions go in the
+record.
 """,
 
-6: """≈28s  ·  AIMS AND OBJECTIVES  (as proposed)
+9: """≈15s  ·  AIMS AND OBJECTIVES
 
-• Three objectives, as we proposed them.
-• BUILD — an ambient-context recorder. Pressure, motion, magnetic field, light,
-  sound level, on one clock, exported as a file bound to a named experiment.
-• REPRODUCE — two known sensing techniques on commodity hardware, and see what
-  survives the move off instrument-grade sensors.
-• EVALUATE — whether any of it is trustworthy. Sampling health, agreement between
-  devices, whether a logged covariate explains variation between runs.
-• Constraint we set ourselves: no additional hardware. It runs on a phone a lab
-  already owns, or nobody uses it.
-• This was always framed as a feasibility study. Our TA held us to that and was
-  right to.
+Three objectives, as we proposed them.
+
+BUILD an ambient-context recorder — pressure, motion, magnetic field, light and
+sound level, all on one clock, exported as a file bound to a named experiment.
+
+REPRODUCE two known sensing techniques on commodity hardware.
+
+EVALUATE whether any of it is trustworthy.
+
+One constraint: no additional hardware. It runs on a phone a lab already owns, or
+nobody uses it.
 """,
 
 # -- section 2 · PROJECT PRESENTATION ----------------------------------------
-7: """≈3s  ·  DIVIDER
+10: """≈3s  ·  DIVIDER
 
-• "Project presentation."
+"Project presentation."
 """,
 
-8: """≈22s  ·  IMPLEMENTATION
+11: """≈18s  ·  IMPLEMENTATION
 
-• React Native. Four kinds of channel.
-• DIRECT — expo-sensors. Accelerometer, magnetometer, barometer. No build step.
-• DERIVED — vibration. The one piece of real engineering. Gravity is a constant
-  1 g and a door close is about 1% on top of it; estimate gravity, subtract it,
-  then RMS and peak over a window.
-• NATIVE — light and microphone level. Swift and Kotlin, because Expo exposes
-  neither. Sound is stored as a LEVEL — no audio is recorded, so there's no
-  waveform to leak. That's the code, not a policy.
-• RECORD — one session, one JSON file. Metadata, placement, sampling health, one
-  clock, aligned across devices by a haptic fiducial.
-• The deployment boundary: four channels install by scanning a QR code. All six
-  need a compiled dev client. The hardware is universal; access to it isn't.
+React Native. One TypeScript codebase, real native views on both platforms.
+
+Expo Go is the part that matters. It's a pre-built container app you install free
+from the App Store, point at a QR code, and it runs your JavaScript — no Xcode, no
+developer account, no cable. But it ships a fixed set of native modules, and your
+code can only reach hardware inside that set.
+
+Accelerometer, magnetometer and barometer are in it. Vibration we derive from the
+accelerometer in JavaScript, so that's free too.
+
+Microphone level isn't in it. Ambient light on iOS isn't either — Apple exposes no
+general-purpose light sensor to apps, so ours goes through camera exposure metadata.
+Both meant writing Swift and Kotlin, and that means a compiled build.
+
+Four channels install in thirty seconds. All six need a toolchain.
 """,
 
-9: """≈8s  ·  IN USE — 1 of 4: DESIGNED
+12: """≈6s  ·  IN USE — 1 of 4: DESIGNED
 
-• Before any of it existed, this was the spec — an ASCII mockup of the recording
-  screen.
-• Sampling health on screen, not buried in the export. The operator should know a
-  session is failing before they walk away from it.
+Before any of it existed, this was the specification. An ASCII mockup of the
+recording screen, with sampling health on screen rather than buried in the export.
 """,
 
-10: """≈9s  ·  IN USE — 2 of 4: BUILT
+13: """≈8s  ·  IN USE — 2 of 4: BUILT
 
-• The real thing. This is the sensor check: every module the device actually
-  offers, with its rate and its current reading.
-• All six present, including the two native modules. There's also a calibrate step
-  — twenty seconds at rest — that measures each channel's own bias and noise.
-• That matters because none of this is traceable to a standard. Knowing your own
-  noise floor is the substitute.
+The real thing. This is the sensor check: every module the device actually offers,
+its rate, its current reading. All six present.
+
+There's also a calibrate step — twenty seconds at rest — that measures each
+channel's own bias and noise. None of this traces to a standard, so knowing your own
+noise floor is the substitute.
 """,
 
-11: """≈12s  ·  IN USE — 3 of 4: RECORDING
+14: """≈7s  ·  IN USE — 3 of 4: RECORDING
 
-• Six seconds into a session. Six channels, live, on one clock.
-• Accelerometer, magnetometer, barometer, light, microphone level, and the derived
-  vibration channel — each with its running sample count and realised rate.
-• Two weeks ago this was four channels and a note saying the other two needed a
-  build we hadn't done.
+Six seconds into a session. Six channels live on one clock, each showing its running
+sample count and realised rate.
+
+Two weeks ago this was four channels and a note saying the other two needed a build
+we hadn't done.
 """,
 
-12: """≈8s  ·  IN USE — 4 of 4: EXPORTED
+15: """≈6s  ·  IN USE — 4 of 4: EXPORTED
 
-• Stop and export. One session, one JSON file, 182 kilobytes.
-• It leaves the phone through the normal share sheet — AirDrop, mail, files.
-  Nothing proprietary, no account, no server. The file is the deliverable.
+Stop and export. One session, one JSON file, 182 kilobytes. It leaves through the
+normal share sheet — no account, no server. The file is the deliverable.
 """,
 
-13: """≈24s  ·  WHY THIS IS HARD
+16: """≈14s  ·  WHY THIS IS HARD
 
-• Why this is a study and not a product announcement. Consumer sensors have
-  documented, named failure modes.
-• The raw stream isn't raw — SensorID, IEEE S&P 2019, recovers factory calibration
-  baked into firmware. You're reading a vendor-conditioned number.
-• Self-heating — a MEMS gyro drifts 317 degrees an hour in its first 400 seconds
-  from power-on alone. A phone logging continuously starts by measuring itself.
-• Per-unit thermal drift — four identical units, −1.2 to +1.4 mg per degree against
-  a ±0.5 spec. No generic correction exists.
-• Automatic pipelines — auto-exposure and AGC sit between the world and the number.
-• Device heterogeneity — you can predict the OS from sensor quality metrics alone
-  at 98% accuracy. Hold that one; we hit it ourselves in a few slides.
-• No traceability — no calibration chain to a national standard. Relative change
-  within a session, never an absolute value.
-• Plus two of our own: occlusion — lens film, lint in the mic port, a case over the
-  barometer vent — and the OS suspending background apps on long runs.
+Consumer sensors have documented failure modes, which is why this is a study rather
+than a product announcement.
+
+The raw stream isn't raw — factory calibration is baked into firmware, so you're
+reading a vendor-conditioned number. A MEMS sensor drifts measurably in its first
+few minutes from self-heating alone, so a phone logging continuously starts by
+measuring itself. Identical units differ in thermal drift, so no generic correction
+exists. Auto-exposure and automatic gain control sit between the world and the
+number.
+
+And there's no calibration chain back to a national standard. Relative change within
+a session. Never an absolute.
 """,
 
 # -- section 3 · CHANGES TO THE PLAN -----------------------------------------
-14: """≈3s  ·  DIVIDER
+17: """≈3s  ·  DIVIDER
 
-• "Changes to the plan."
+"Changes to the plan."
 """,
 
-15: """≈32s  ·  CHANGES SINCE THE PROPOSAL
+18: """≈19s  ·  CHANGES SINCE THE PROPOSAL
 
-• Four.
-• ONE — scope was cut to four channels, then won back to six. Light and sound need
-  a compiled dev client, so the pilot ran without them and we dropped the
-  Alka-Seltzer study. The dev client now builds and all six record. A dropped
-  feature turned into a measured deployment boundary.
-• TWO — the multi-site study is now explicitly a case study. Our TA pointed out
-  that three sites with one person each can't support a between-site variance
-  claim; person, city, phone and building are confounded. Correct. The quantitative
-  claims moved to a within-site design.
-• THREE — the team went from two to one, and the protocol followed. The pendulum
-  ladder got displaced by an ambient-condition experiment — a loud dehumidifier,
-  switched on and off, identical door protocol under both. That tests the project's
-  actual claim rather than characterising the instrument.
-• FOUR — we pre-registered. Metrics, windows, exclusions, trial counts, frozen in
-  the repo, dated, before the data existed.
+Four, and each was forced by something we hit.
+
+We proposed an Alka-Seltzer dissolution study and it was basically approved. It
+needed light and sound level. Both are native modules, and Expo Go can't load them.
+So we swapped to door closes — an event the four Expo Go channels can actually see.
+
+Then the dev client built and all six came back. A dropped feature turned into a
+measured result about deployment.
+
+Third, the multi-site study became a case study. Our TA pointed out that three sites
+with one person each confound person, city, phone and building. That was correct.
+
+Fourth, the one we didn't plan. We started measuring the instrument instead of the
+room.
 """,
 
 # -- section 4 · RESULTS -----------------------------------------------------
-16: """≈3s  ·  DIVIDER
+19: """≈3s  ·  DIVIDER
 
-• "Results."
+"Results."
 """,
 
-17: """≈28s  ·  THE EXPERIMENT, LINE BY LINE
+20: """≈14s  ·  THE EXPERIMENT, LINE BY LINE
 
-• Tonight's protocol as it was actually run. One continuous recording, three
-  devices, about ten minutes.
-• Two factors. Machine off or on — a dehumidifier, switched. Door: nothing, a
-  normal close, or a slam. Six trials of each door level under each machine state.
-• The door trials are the measurement. The dehumidifier is the unrecorded ambient
-  condition — nobody writes "the dehumidifier was running" in a methods section,
-  which is exactly the class of variable this project is about.
-• One recording rather than six sessions, deliberately: every cell lands on one
-  clock and one thermal state, so the machine is the only thing that changes.
-  Cells get cut out afterwards by timer reading.
-• The question it can answer that a single close type could not — whether a running
-  appliance pushes a NORMAL close below detectability while a SLAM still comes
-  through. A threshold, not a ratio.
+The card is the protocol as actually run.
+
+Two factors: the dehumidifier off or on, and the door doing nothing, a normal close,
+or a slam. Six trials of each. The door trials are the measurement. The dehumidifier
+is the ambient condition nobody writes in a methods section.
+
+One continuous recording instead of six sessions, so every cell lands on the same
+clock and the same thermal state.
 """,
 
-18: """≈26s  ·  WHY n = 6
+21: """≈18s  ·  PILOT STUDY   [16 s clip auto-plays]
 
-• This is the pilot's real defect, and it's worth its own slide.
-• An exact permutation test's smallest possible p is fixed by the trial count
-  before any data exists. Two per condition: six arrangements, floor 0.167. Three:
-  twenty arrangements, floor 0.05. Six: 924 arrangements, floor 0.001.
-• Holm correction across our comparisons puts the bar at 0.025. So at n=2 and at
-  n=3 the test cannot reach significance — arithmetically, whatever the doors do.
-• The pilot's problem was never that it found nothing. It's that it could not have
-  found anything. We designed a study whose result was fixed before collection, and
-  didn't notice until we tried to analyse it.
-• The rule we took from it: when the schedule tightens, cut CONDITIONS, not
-  REPLICATES. Replicates make a test capable of answering; conditions make it
-  interesting. A narrow answerable study beats a broad unanswerable one — and we
-  have six files proving it.
+The clip starts by itself.
+
+First half is Chris's pilot in Toronto — two baselines, two normal closes, two slams,
+on an iPhone X. The blue marker on the door edge is his repeatability control: the
+same closed position every trial.
+
+Second half is the same action in Chicago, eight weeks later, on different hardware,
+in a different building. That half runs at about 80 times real speed.
+
+Six sessions, exported as JSON. Every result after this came from those files alone,
+in a different city, with no further input from the person who recorded them.
 """,
 
-19: """≈24s  ·  ALL SIX CHANNELS, ONE CLOCK
+22: """≈18s  ·  WHAT THE INSTRUMENT MEASURED
 
-• Six-second session on the dev client. This is the live readout, enlarged.
-• Then the thing we weren't looking for. 502 accelerometer samples in six seconds
-  is 84 hertz. We requested 50. Magnetometer: 42, we requested 25. Both overshoot
-  by the same factor, 1.68.
-• The pilot phone didn't do that. Measured straight out of Chris's exported files:
-  50.2 and 25.1. Nominal, both channels, same code.
-• So device heterogeneity stopped being a citation and became two of our own phones
-  disagreeing about what "50 hertz" means.
-• And it moves the derived channel. Vibration comes out at 8 hertz here and 5 in
-  the pilot — which tells us the 200-millisecond window is counted in SAMPLES, not
-  milliseconds. On this device it's really about 119 milliseconds.
-• A constant we froze in the pre-registration turns out to be device-dependent.
-  That's a finding, and it's also a bug, and we found it by reading our own numbers.
+Twenty-four door trials. Two devices, one table, the same ten minutes.
+
+Twelve normal closes, twelve slams. On the acoustic channel the slams peaked 12.3
+decibels higher. On the derived vibration channel, 2.6 times higher.
+
+The average isn't the point. The overlap is, and there isn't any. Not one normal
+close reached the level of any slam, on either channel, on either device. That puts
+the smallest attainable p at one in two and a half million.
+
+And it replicated. The second device gave 2.77 against our 2.60. Different hardware,
+same conclusion, same ten minutes.
 """,
 
-20: """≈30s  ·  PILOT STUDY   [footage runs here]
+23: """≈17s  ·  TWO PHONES, ONE TABLE
 
-• The pilot: two baselines, two normal door closes, two slams. One phone, one room,
-  Toronto. Chris ran it and narrates it.
-• [CUE] Let the footage run. Caption over any cut: "protocol continues — 4 further
-  trials."
-• Coming out of it: the derived vibration channel separated slams from baseline at
-  13 to 109 times the session noise floor.
-• And a correction to our own pilot report — it said the sync taps were lost. They
-  weren't. Re-running the detector at 50 Hz found 3 to 5 in all six sessions. A
-  reporting artifact, not a data loss.
-• THIS SLIDE IS THE TIME LEVER. Going long? Shorten the footage here.
+The same 24 events, two devices, two opposite findings.
+
+They agree about change. Pearson r of 0.97 on both channels, against a threshold we
+set at 0.90 before collecting anything, with event timing matched to 33 milliseconds
+and no sync marker.
+
+That contradicted our own prediction. On synthetic data the derived channel failed
+cross-device agreement at 0.857. On real data it matched the raw channel.
+
+They disagree about everything absolute. Same table, same second: barometers 0.675
+hectopascals apart, resting sound level 7.8 decibels apart, noise floors across four
+devices spanning 2.4 times. One read the magnetic field at 664 microtesla and the
+other at 41, because a magnet was stuck to it. No other channel noticed.
 """,
 
-21: """≈22s  ·  DERIVED VIBRATION CHANNEL
+# -- section 5 · REFLECTION --------------------------------------------------
+24: """≈3s  ·  DIVIDER
 
-• Raw accelerometer against the derived channel, same events.
-• Gravity dominates: a door close is about 1% on top of a constant 1 g. Subtract
-  the constant and the same samples give 3.5 to 5 times the signal-to-noise. No new
-  hardware.
-• One trap, because we walked into it. You can't take a spectrum of the
-  acceleration MAGNITUDE — magnitude is the square root of signal-squared plus one,
-  so a transverse vibration enters squared and comes out at double its frequency.
-  We planted 7 Hz and the magnitude spectrum returned 14. Per-axis and detrended:
-  7.03.
-• The kind of mistake that produces a confident wrong number.
+"Reflection." Say it — this is where the marks are.
 """,
 
-22: """≈3s  ·  DIVIDER
+25: """≈15s  ·  DESIGNING IT WAS HARDER THAN RUNNING IT
 
-• "Reflection." Say it — this is where the marks are.
+The hardest part of this project wasn't the code. It was designing an experiment
+that could answer anything, in a house, on a deadline.
+
+An exact permutation test's smallest possible p is fixed by the trial count before
+any data exists. Two per condition floors at 0.167. Three at 0.05. Six at 0.001. Our
+corrected bar is 0.025.
+
+So at two or three trials the test cannot reach significance no matter what the doors
+do. The pilot's problem was never that it found nothing. It couldn't have found
+anything, and we didn't notice until we tried to analyse it.
+
+The rule we took from it: when the schedule tightens, cut conditions, not replicates.
 """,
 
-23: """≈30s  ·  MIDWAY HYPOTHESIS
+26: """≈18s  ·  WHAT WE GOT WRONG
 
-• What we believe right now, per channel, and what would change our minds. Stated
-  before the data, so it can be wrong.
-• VIBRATION — likely good enough. 13 to 109 times the floor. Falsified if the dose
-  ladder isn't monotonic.
-• ACCELEROMETER — good for timing, not amplitude. Recovered every fiducial; events
-  sit 1 to 4% above gravity.
-• BAROMETER — not yet trusted. The session-long rise looked identical in baseline
-  and slam, which says we're measuring the device, not the room.
-• MAGNETOMETER — probably not useful at this scale. The noise is bigger than the
-  signal. A clean negative is still a result.
-• LIGHT — sampling but not yet reporting. 87 samples in six seconds and the EV
-  field still renders as a dash. Something between the module and the display isn't
-  finished.
-• MIC LEVEL — recording. Minus 62 dBFS, 82 samples, exported.
-• CROSS-DEVICE — already returning a result: our two phones differ by 1.68× in
-  realised rate.
+Three, and two are about our own product rather than our data.
+
+We built an instrument that doesn't insist. Condition defaults to "controlled", and
+site, notes and placement are all optional, so a session saves with none of them and
+the app never asks. Every session we've recorded came out that way. Distance from
+phone to door is the biggest single thing determining amplitude, and it's in none of
+the files.
+
+Nobody operated it wrong. The tool never made it easy to operate right, and that's
+the first thing we're fixing.
+
+Second, six sensors appeared to disagree with their own spec, every channel
+overshooting by the same factor. Six independent sensors don't agree on an error. A
+shared denominator does. Our elapsed timer was counting timer firings instead of
+seconds.
+
+Third, there's no single best channel. Sensitivity and cross-device comparability
+trade against each other, and we didn't expect that.
 """,
 
-24: """≈30s  ·  WHAT WE GOT WRONG
+27: """≈12s  ·  EITHER OUTCOME IS USEFUL
 
-• Three, and two are about our own product.
-• ONE — the app accepted six sessions it should have refused. All six pilot
-  sessions stored as condition "controlled", including both slams, with site and
-  notes empty in every one. The distance from phone to door is the biggest single
-  determinant of measured amplitude, and it isn't in the record — so the two-site
-  comparison can't be made rigorously. We're building an instrument to capture what
-  nobody writes down, and it let us not write it down.
-• TWO — six sensors appeared to disagree with their own spec. The dev client showed
-  every channel overshooting by the same 1.68×, including a barometer reading 2 Hz
-  when the hardware runs at 1. Six independent sensors don't agree on an error; a
-  shared denominator does. The elapsed timer was counting setInterval firings
-  instead of seconds, and the JS thread was dropping them under sensor load.
-  Display-only — recorded data was never affected — but we believed a wrong number
-  for a day.
-• THREE — there is no single best channel. The derived channel wins on sensitivity
-  and loses on cross-device agreement, because each device runs its own window
-  clock. Sensitivity and comparability trade against each other.
+None of that makes it a wash.
+
+If the sensors pass, ambient context capture is free for anyone with a phone —
+teaching labs, citizen science, anywhere without an instrumentation budget.
+
+If they fail, the app is still the experiment-linked recorder, and the sensing moves
+to a cheap external package over Bluetooth. That case has support: the same phone
+apps, re-run with external calibrated microphones, came within a decibel of
+reference.
 """,
 
-25: """≈20s  ·  EITHER OUTCOME IS USEFUL
+28: """≈15s  ·  MIDWAY HYPOTHESIS
 
-• Why the question is worth asking whichever way it goes.
-• IF THE SENSORS PASS — ambient context capture is free for anyone with a phone.
-  Teaching labs, citizen science, anywhere with no instrumentation budget.
-• IF THEY FAIL — the app is still the experiment-linked recorder: the schema, the
-  UI, the sampling-health gate. The sensing moves to a cheap external package over
-  BLE, and the phone's own sensors stop being confounding variables.
-• That second case has support. The same phone sound-level apps, re-run with
-  external calibrated microphones, came within ±1 dB of reference. The built-in
-  signal chain was the limit, not the phone.
-• So the real question isn't "does the phone work." It's "what's the cheapest thing
-  that does, and can this app host it."
+What we believe right now, per channel, stated so it can be wrong.
+
+Vibration is likely good enough — 13 to 109 times the floor. The accelerometer is
+good for timing, not amplitude. The barometer isn't trusted yet: its session-long
+rise looked identical in baseline and in slam, which says we measured the device
+rather than the room. The magnetometer is probably not useful at this scale — the
+noise is bigger than the signal.
+
+Light samples but doesn't report. Microphone level records. And cross-device is
+already returning a result we didn't expect.
 """,
 
-26: """≈12s  ·  CONTRIBUTIONS
+29: """≈15s  ·  WHAT HAPPENS NEXT
 
-• Chris ran the door pilot — protocol, recording, the six sessions.
-• The recorder, export schema, analysis and study design are mine.
+Left column is this week. Five small things: the other machine state to finish the
+two-by-three, the magnet off and six more closes, a log line to find out what the
+light module actually returns, an overnight run against a weather station, and a
+distance ladder that finally makes Toronto and Chicago comparable.
+
+Right column is the version worth building. Baseline every device on the market.
+Every calibration run contributes a noise floor keyed to device model, so the app can
+tell any phone whether it resolves the effect you declared — and refuse the ones that
+can't.
+
+First column is homework. Second is why the homework is worth doing.
 """,
 
-27: """≈10s  ·  SUMMARY
+30: """≈7s  ·  WORKS CITED
 
-• The recorder works. All six channels record and export.
-• A feasibility result, not a reproducibility result — the honest version of what
-  one term buys.
-• Whether a phone is a good enough INSTRUMENT is still open. Whether it's a good
-  enough RECORDER isn't.
-• Pre-registered study runs this week.
-• [CUE] Cut to the opening frame — phone on the counter, hold two seconds, out.
+Leave it up while you finish the previous thought.
+
+Claude — Sonnet and Opus — was used throughout as a learning aid, coding mentor and
+analysis partner. Every measurement was run by us, and every conclusion checked by
+us.
+""",
+
+31: """≈8s  ·  CONTRIBUTIONS
+
+Chris wrote the derived sensor code, designed the door-slam pilot protocol, and ran
+the recording and the six test sessions.
+
+Product and study design, the live tests, the export schema and the analysis are
+mine.
+""",
+
+32: """≈11s  ·  SUMMARY
+
+The recorder works. All six channels run.
+
+This is a feasibility result rather than a reproducibility result — the best we could
+do in a tight window.
+
+Whether a phone is a good enough instrument is still open. Whether it's a good enough
+recorder is not.
+
+The code and the data are public. That code goes to the repository. If you want to
+run this in your room, on your hardware, we'd like the data.
 """,
 }
 
@@ -362,8 +421,11 @@ for i, body in NOTES.items():
         sys.exit(f"slide {i} carries no budget marker")
     total += int(m.group(1))
 
+words = sum(len(b.split()) for b in NOTES.values())
 prs.save(DECK)
-print(f"{n} slides, all shown")
+print(f"{n} slides, all shown · {words} words of narration")
 print(f"budget {total}s = {total // 60}:{total % 60:02d}   cap 8:00, margin {480 - total}s")
 if total > 470:
     sys.exit("OVER BUDGET — trim before filming")
+if total < 300:
+    sys.exit("UNDER 5:00 — the rubric wants at least five minutes")
