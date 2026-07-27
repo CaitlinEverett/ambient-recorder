@@ -48,22 +48,26 @@ NOTES = {
   Nobody writes down the humidity.
 """,
 
-4: """≈12s  ·  + ERRINGTON  (2 of 3)
+4: """≈12s  ·  + COLLBERG & PROEBSTING  (2 of 3)
 
-• This isn't a soft problem. Reproducibility Project: Cancer Biology tried to
-  replicate 193 experiments from 53 high-impact papers.
-• Not one of them was described completely enough to design the replication from
-  the paper alone. Every single one needed the original authors on the phone.
-• The missing information is exactly the kind nobody thinks to record.
+• Start in our own field, because it's not somebody else's problem. Collberg and
+  Proebsting went after 601 papers from eight ACM conferences and five journals.
+• They tried to get the code and build it. Succeeded for 32.3%.
+• Most published computer systems work cannot be repeated from what was written
+  down — and that's the field with version control.
 """,
 
-5: """≈12s  ·  + CRABBE  (3 of 3)
+5: """≈12s  ·  + THE ISOS CONSENSUS  (3 of 3)
 
-• The stronger version. Crabbe 1999 — same mouse strains, same apparatus, same
-  protocols, three labs, tested simultaneously, environment deliberately equated.
-• Results still differed by lab. For some tests the size of the genetic effect
-  depended on which building you were standing in.
-• They controlled everything they knew to control, and the room still won.
+• The interesting case is what a field does once it admits this.
+• Perovskite solar cells: results weren't comparable between labs, because
+  everybody tested under different ambient conditions and reported different
+  parameters. Nature Energy, 2020 — a consensus statement, dozens of groups.
+• The fix wasn't a better measurement. It was agreeing on which conditions have to
+  be written down: temperature, humidity, illumination, atmosphere, electrical bias.
+• That's the whole argument in one citation. The ambient conditions were always
+  affecting the result. They just weren't in the record until somebody decided they
+  had to be.
 • So: every room where an experiment happens already contains a capable sensor
   package in somebody's pocket. The question is whether what it measures is worth
   anything.

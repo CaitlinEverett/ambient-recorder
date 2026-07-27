@@ -279,19 +279,21 @@ reproduce, there is something to look at.
 # The same slide three times, adding one paper each. python-pptx cannot write
 # PowerPoint animations, so the reveal is built as successive slides — which also
 # survives export to PDF and to video without anyone clicking anything.
-ERRINGTON = dict(
-    venue="eLife 10:e67995 (2021)  ·  CC BY  ·  doi.org/10.7554/eLife.67995",
-    head="Challenges for assessing replicability in preclinical cancer biology",
-    authors="Errington, Denis, Perfito, Iorns & Nosek  ·  193 experiments, 53 papers",
-    quote="\u201cNone of the 193 experiments were described in sufficient detail in the "
-          "original paper to enable us to design protocols to repeat the experiments.\u201d",
+COLLBERG = dict(
+    venue="Communications of the ACM 59(3):62\u201369 (2016)  \u00b7  doi.org/10.1145/2812803",
+    head="Repeatability in computer systems research",
+    authors="Collberg & Proebsting  \u00b7  601 papers, 8 ACM conferences and 5 journals",
+    quote="Code supporting a published result could be obtained and built for 32.3% of "
+          "them. In our own field, most published work cannot be repeated from what was "
+          "written down.",
 )
-CRABBE = dict(
-    venue="Science 284(5420):1670\u20132 (1999)  ·  doi.org/10.1126/science.284.5420.1670",
-    head="Genetics of mouse behavior: interactions with laboratory environment",
-    authors="Crabbe, Wahlsten & Dudek  ·  three laboratories, simultaneous testing",
-    quote="\u201cApparatus, test protocols, and many environmental variables were rigorously "
-          "equated \u2026 there were systematic differences in behavior across labs.\u201d",
+ISOS = dict(
+    venue="Nature Energy 5:35\u201349 (2020)  \u00b7  doi.org/10.1038/s41560-019-0529-5",
+    head="Consensus statement for stability assessment and reporting for perovskite "
+         "photovoltaics",
+    authors="Khenkin, Katz, Abate et al.  \u00b7  a whole field agreeing what to write down",
+    quote="\u201cPublications lack consistency in experimental procedures and parameters "
+          "reported. It is therefore challenging to reproduce and compare results.\u201d",
 )
 
 for _step in (0, 1, 2):
@@ -306,9 +308,9 @@ for _step in (0, 1, 2):
     # Two lines of intro at 18 pt end near 2.55 in. Cards stack from there with a
     # 0.12 in gutter; anything past 6.7 in collides with the Georgia Tech logo.
     if _step >= 1:
-        citation_card(s, 2.70, **ERRINGTON)
+        citation_card(s, 2.70, **COLLBERG)
     if _step >= 2:
-        citation_card(s, 4.62, **CRABBE)
+        citation_card(s, 4.62, **ISOS)
     notes(s, "PLACEHOLDER")
 
 
