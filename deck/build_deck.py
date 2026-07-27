@@ -1440,7 +1440,7 @@ ORDER = [
     "aims",
     "div:Project presentation",
     "Implementation",
-    "inuse1", "inuse2", "inuse3", "inuse4",
+    "inuse1", "inuse2", "inuse3", "inuse4", "inuse4",
     "Why this is hard",
     "Channels",
     "One test per sensor",
@@ -1503,7 +1503,7 @@ if LEAN:
         # consumer-hardware failure-mode table survives in the full deck and
         # its conclusion — relative change only, never an absolute — is
         # already carried by the BLUF and by "Two phones, one table".
-        "inuse1", "inuse2", "inuse3",
+        "inuse1", "inuse2", "inuse3", "inuse4",
     }
     for k in CUT:
         e = _ids[id(REG[k])]

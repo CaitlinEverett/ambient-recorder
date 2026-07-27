@@ -32,90 +32,80 @@ from pptx import Presentation
 
 DECK = "Covariate_Demo.pptx"
 
-WPM = 173        # measured against the synthesised read, not guessed
+WPM = 150        # measured off the first take: 1,902 words in 13:38 is 140
 PAUSE_S = 0.7    # dead air per slide advance
-CAP_S = 465      # 7:45, under the rubric's strict 8:00
+CAP_S = 450      # 7:30, so a slow slide doesn't spend the whole margin
 
 NOTES = {
 
 1: """OPEN
 
-Covariate. CS-7470, Team 42 — Caitlin Everett and Christopher Kimberley.
+Hi — I'm Caitlin Everett, presenting for Group 42. My teammate is Chris Kimberley, and we
+built an app called Covariate.
 
-Phones are cheap, most of us carry one, and a lot of experiments don't reproduce. To be
-clear, we're not running experiments on the phone — it records the room while the
-experiment happens.
-
+One question: can the sensors in an ordinary phone record the conditions a science
+experiment ran under, well enough to be worth trusting?
 """,
 
 2: """SHORT VERSION — 1 of 3: WHAT WE DID
 
-We designed a very simple app and a very simple experiment: two screens, and a door
-opened and closed 24 times, gently then hard, two phones recording all six channels.
+A very simple app and a very simple experiment: two screens, and a door opened and closed
+24 times, gently then hard, with two phones recording all six channels.
 
-A door is really a sound and a shake, so the two channels that carried it were sound
-level and vibration. Another experiment would lean on a different pair — an HVAC cycle
-is pressure; a photostability run is light.
-
-And vibration isn't sensed, it's computed. An accelerometer at rest reads one g, not
-zero, because gravity is always in the number, and a door close is one percent on top of
-that.
+A door is really just a sound and a shake, so the channels that carried it were sound
+level and vibration. And vibration isn't sensed, it's computed — as many of you know —. An accelerometer at rest reads one g, not zero, and a door
+close is one percent on top.
 """,
 
 3: """SHORT VERSION — 2 of 3: IT WORKED
 
-Soft closes and slams separated cleanly, and it wasn't close — the quietest slam still
-beat the loudest gentle close. On the microphone, 12.3 decibels louder; on vibration,
-2.6 times bigger.
+Soft closes and slams separated very cleanly, and it wasn't even close — the quietest slam
+beat the loudest gentle close. On the microphone, 12.3 decibels louder. On vibration, 2.6
+times bigger.
 """,
 
 4: """SHORT VERSION — 3 of 3: WHAT'S LEFT
 
-The two phones disagree about absolutes, so we report change within a session. One
-channel returned nothing for eight minutes while the app called it healthy. And we have
-only tested a few devices.
-
-Promising, bounded, and definitely just the start of something interesting.
+The phones disagree about absolute values, so we only report change within a session. One
+channel returned nothing for eight minutes while the app called it healthy. And we've only
+tested a few devices.
 """,
 
-5: """CHRIS, RUNNING THE APP   [12 s clip auto-plays]
+5: """CHRIS, RUNNING THE APP   [13 s clip auto-plays]
 
-Chris running it, before any door has moved. Six channels reading live.
+Chris running it in Toronto. Six channels reading live — then he starts the recording.
 """,
 
 6: """DIVIDER
 
-"Aims and objectives."
+So what were our aims and objectives?
 """,
 
 7: """WHY RECORD THE ROOM — 1 of 3
 
-Two people run the same protocol and get different answers. The difference usually isn't
-the protocol. It's everything around it that nobody wrote down.
-
+Two people can run the same protocol and get totally different answers. The difference
+usually isn't the protocol. It's everything around it that people forgot to write down.
 """,
 
 8: """+ THE EDGE EFFECT — 2 of 3
 
-Cells in the outer wells of a 96-well plate read up to 35% lower than the wells in the
-middle. Evaporation and a temperature gradient across the room. Not a technique problem
-— a room problem.
+Cells in the outer wells of a well plate read up to 35% lower than the ones in the middle.
+Evaporation, and a temperature gradient across the room. Not a technique problem.
 """,
 
 9: """+ THE ISOS CONSENSUS — 3 of 3
 
-Perovskite solar results weren't comparable between labs. So the field wrote a consensus
-statement, in Nature Energy, on what has to be recorded.
-
+Perovskite solar results weren't comparable between labs at all. So the field wrote a
+consensus statement, in Nature Energy, on what has to be recorded for a result to count.
 """,
 
 10: """AIMS AND OBJECTIVES
 
-Three objectives, on screen. Build the recorder, reproduce two known sensing techniques
-on commodity hardware, and work out whether any of it can be trusted.
+Three. Build a recorder, reproduce two known sensing techniques on commodity hardware, and
+work out whether the data we get back can be trusted.
 
-One constraint: no extra hardware. It runs on a phone a lab already owns, or nobody uses
-it.
+One constraint: no extra hardware — could the equipment fancy labs use be matched by
+what's already in our pockets? 
 """,
 
 11: """DIVIDER
@@ -125,175 +115,147 @@ it.
 
 12: """IMPLEMENTATION
 
-Expo Go is the part that matters. Free container app from the App Store — point it at a
-QR code and it runs your JavaScript. But it ships a fixed set of native modules, and
-your code can only reach those. Microphone level and iOS light are outside it, so those
-meant Swift, Kotlin and a compiled build.
+Expo Go is the part we interfaced with most — point it at a QR code and it runs your
+JavaScript. But it ships a fixed set of native modules, and your code can only reach
+those. Microphone level and iOS light are outside that set, so those meant Swift and a
+developer account.
 
+There's also a calibration step, twenty seconds at rest. Every phone is different, so what
+matters is the delta between calibration and the real reading.
 """,
 
-13: """IN USE
+13: """WHY THIS IS HARD
 
-It sits on a table while an experiment runs, works like a stopwatch, and spits out one
-JSON file.
+Consumer hardware has a lot of failure modes. The one that surprised us: the streams
+aren't raw. Factory calibration is baked into firmware, so you're reading a number the
+vendor already conditioned.
 
-Calibrate is twenty seconds at rest, measuring each channel's own bias and noise. That
-step may be what makes this usable by citizen scientists and labs on a budget.
+We ran the experiment with more and less background noise, and the gain had already been
+factored out — we couldn't tell the difference.
 """,
 
-14: """WHY THIS IS HARD
-
-We knew going in — as probably many of you have — that phone sensors have failure modes.
-Here are a few, and what we wanted to know was how they land on a result.
-
-One that surprised us: the stream isn't raw. Factory calibration is baked into firmware,
-so you're reading a number the vendor already conditioned.
-""",
-
-15: """DIVIDER
+14: """DIVIDER
 
 "Changes to the plan."
 """,
 
-16: """CHANGES SINCE THE PROPOSAL
+15: """CHANGES SINCE THE PROPOSAL
 
-We had to change course a bit. We originally proposed an Alka-Seltzer study, and it was basically approved. It needed
-light and sound level — both native modules, and Expo Go can't load them. So we swapped
-to door closes, which the four Expo Go channels can see. Then the dev client built and
-all six came back.
+We originally proposed an Alka-Seltzer study. It needed sound and light, Expo Go wasn't loading them, so we
+swapped to door closes.
 
-And the multi-site study shrank, wisely, into a single-site case study — three sites with one
-person each confound too much.
+We eventually got all six working, but we'd already pivoted — and the multi-site study
+shrank, wisely, into a single site.
 """,
 
-17: """DIVIDER
+16: """DIVIDER
 
 "Results."
 """,
 
-18: """THE EXPERIMENT, LINE BY LINE
+17: """THE EXPERIMENT, LINE BY LINE
 
-We tried to follow our own protocol carefully: one continuous recording rather than six
-sessions, so every cell lands on the same clock and thermal state.
-
-A door still isn't perfect, but it exercises most of the sensors — and we understand a
-lot better now how careful we have to be with consumer hardware.
+We followed our own protocol carefully — one continuous recording rather than six sessions,
+so every condition lands on the same clock and thermal state. It wasn't perfect, but we
+could read events off spikes rather than off exact timing.
 """,
 
-19: """PILOT STUDY   [16 s clip auto-plays]
+18: """PILOT STUDY   [16 s clip auto-plays]
 
-Chris in Toronto on
-an iPhone X, then Chicago eight weeks later on different hardware.
-
-The blue marker on his door edge is a repeatability control: same closed position every
-trial.
+Sped way up,. You can see the knock we used as a marker, and the doors
+opening and closing — Chris in Toronto, then Chicago on different hardware.
 """,
 
-20: """WHAT THE INSTRUMENT MEASURED
+19: """WHAT THE INSTRUMENT MEASURED
 
-Charts in the paper. The slams came in 12.3 decibels louder on the microphone and 2.6
-times bigger on vibration. But the averages matter less than the fact that nothing
-overlapped — the quietest slam still beat the loudest gentle close, on both phones.
+Slams came in 12.3 decibels louder and 2.6 times bigger on vibration. What matters is that
+nothing overlapped — the quietest slam beat the loudest gentle close,. As
+simple as that is, it was a good sign.
 
-And it replicated: the second phone gave 2.77 where ours gave 2.60.
+And it replicated: the second phone gave 2.77 where the first gave 2.60. Pretty close. Not
+perfect.
 """,
 
-21: """TWO PHONES, ONE TABLE
+20: """TWO PHONES, ONE TABLE
 
+The other interesting one: the phones agree about change — within about three percent —
+but disagree fundamentally about absolute values. Same table, same second, the two
+barometers were far enough apart to be five metres of altitude.
 
-Two findings, pointing opposite ways.
-
-The phones agree about change. Plot one phone's 24 events against the other's and it's
-basically a straight line — a correlation of 0.97, against a bar we set at 0.90 before
-collecting anything.
-
-They flatly disagree about absolute values. Same table, same second, the barometers are
-0.675 hectopascals apart — five metres of altitude between two phones lying next to each
-other.
-
-So a phone can tell you what changed, relative to itself — not what the room actually
-was.
+So a phone tells you what changed, relative to itself. Not what the room actually was.
 """,
 
-22: """DIVIDER
+21: """DIVIDER
 
 "Reflection."
 """,
 
-23: """DESIGNING IT WAS HARDER THAN RUNNING IT
+22: """DESIGNING IT WAS HARDER THAN RUNNING IT
 
-The hardest part wasn't the code, though Apple doesn't make it easy to work with its
-sensors. It was designing an experiment that could answer anything, in a house, on a
-deadline.
+The hardest part wasn't the code, though Apple doesn't make it easy. It was designing an
+experiment that could answer anything, in a house, on a deadline.
 
-The table is why. A permutation test's smallest possible p is fixed by the trial count
-before any data exists, and at two or three trials it can't clear our bar no matter
-what the doors do.
-
-So the rule we stuck to: when the schedule tightens, cut conditions, not replicates.
+We also couldn't reach any statistical significance without a lot of repetition. That's
+why we closed the door twenty-four times.
 """,
 
-24: """THINGS WE ARE STILL WORKING ON
+23: """THINGS WE ARE STILL WORKING ON
 
-Three, and two are about our own product.
+We know the UI could guide people to better choices — most context fields are optional, so
+sessions save with none of them.
 
-The UI could guide people to better choices. Every context field is optional, so sessions
-save with none of them — including distance from phone to door, which turns out to be the
-biggest single thing determining how big an event looks. Nobody operated it wrong; the
-tool never made it easy to.
+We know the six sensors don't always support each other. One of those turned out to be us:
+our own timer was counting its own firings instead of seconds. And there's no single best
+channel yet.
 
-Second, six sensors appeared to disagree with their own spec. Six independent sensors
-don't agree on an error — a shared denominator does. Our timer was counting timer
-firings, not seconds.
 """,
 
-25: """EITHER OUTCOME IS USEFUL
+24: """EITHER OUTCOME IS USEFUL
 
-None of this makes it a wash. If the sensors pass, ambient context capture is free for
-anyone with a phone. If they fail, the app is still the experiment-linked recorder and
-the sensing moves to cheap external hardware over Bluetooth.
+If the sensors pass, that's interesting — consumer electronics would be good enough for
+real experiments, which opens a lot of us up to citizen science.
+
+If they fail, still interesting. The sensing moves into something like a sled, and the
+interface is still a stopwatch on a countertop.
 """,
 
-26: """MIDWAY HYPOTHESIS
+25: """MIDWAY HYPOTHESIS
 
-Channel by channel, and we'd like to be wrong about some of it. Vibration is likely good
-enough: 13 to 109 times its own noise floor. The barometer we
-don't trust yet — its slow rise over the session looked the same whether we were slamming
-the door or standing still.
+Channel by channel. Vibration we think is good — 13 to 109 times its own noise floor. The
+barometer we don't trust yet: its slow rise looked the same whether we were slamming the
+door or standing still.
 """,
 
-27: """WHAT HAPPENS NEXT
+26: """WHAT HAPPENS NEXT
 
-Left column is this week.
+This week, a few more runs — getting rid of the magnet that confounded one of mine, and an
+overnight run to see what two devices pick up over hours.
 
-Right column is the version worth building. Baseline every device on the market: every
-calibration run contributes a noise floor keyed to device model, so the app can tell any
-phone whether it resolves the effect you declared — and refuse the ones that can't.
+Longer term, the version worth building baselines every device on the market, so the app
+can tell any phone whether it resolves the effect you care about.
 """,
 
-28: """WORKS CITED
+27: """WORKS CITED
 
-Claude — Sonnet and Opus — was a learning aid, coding mentor and analysis partner
-throughout. Every measurement run by us, every conclusion checked by us.
+We want to acknowledge the work we've cited, and Claude — Sonnet and Opus — used
+throughout as a learning aid and analysis partner. Every measurement run by us, every
+conclusion checked by us.
 """,
 
-29: """CONTRIBUTIONS
+28: """CONTRIBUTIONS
 
-Chris wrote the derived sensor code, designed the pilot protocol, and ran the six test
-sessions. Product and study design, the live tests, the export schema and the analysis
-are mine.
+I want to thank my partner for working on this so diligently. Chris wrote the derived
+sensor code, designed the pilot protocol, and ran the six test sessions. Study design, the
+live tests and the analysis are mine.
 """,
 
-30: """SUMMARY
+29: """SUMMARY
 
-The recorder works. But this is a feasibility result, not a reproducibility result — the best we could do in a
-tight window.
+The recorder works. Whether a phone is a good enough instrument is still open — whether
+it's a good enough recorder isn't.
 
-Whether a phone is a good enough instrument is still open. Whether it's a good enough
-recorder is not.
-
-The code and the data are public. Scan the code. If you run this in your room, we want
-the data.
+We're posting the code and the data publicly, so please download, fork, and help improve
+Covariate. Thank you so much.
 """,
 
 }
