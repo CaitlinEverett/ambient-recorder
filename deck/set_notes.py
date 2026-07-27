@@ -65,7 +65,7 @@ NOTES = {
   had to be.
 """,
 
-6: """≈32s  ·  AIMS AND OBJECTIVES  (as proposed)
+6: """≈28s  ·  AIMS AND OBJECTIVES  (as proposed)
 
 • Three objectives, as we proposed them.
 • BUILD — an ambient-context recorder. Pressure, motion, magnetic field, light,
@@ -86,7 +86,7 @@ NOTES = {
 • "Project presentation."
 """,
 
-8: """≈26s  ·  IMPLEMENTATION
+8: """≈22s  ·  IMPLEMENTATION
 
 • React Native. Four kinds of channel.
 • DIRECT — expo-sensors. Accelerometer, magnetometer, barometer. No build step.
@@ -136,7 +136,7 @@ NOTES = {
   Nothing proprietary, no account, no server. The file is the deliverable.
 """,
 
-13: """≈28s  ·  WHY THIS IS HARD
+13: """≈24s  ·  WHY THIS IS HARD
 
 • Why this is a study and not a product announcement. Consumer sensors have
   documented, named failure modes.
@@ -161,7 +161,7 @@ NOTES = {
 • "Changes to the plan."
 """,
 
-15: """≈36s  ·  CHANGES SINCE THE PROPOSAL
+15: """≈32s  ·  CHANGES SINCE THE PROPOSAL
 
 • Four.
 • ONE — scope was cut to four channels, then won back to six. Light and sound need
@@ -186,7 +186,41 @@ NOTES = {
 • "Results."
 """,
 
-17: """≈30s  ·  ALL SIX CHANNELS, ONE CLOCK
+17: """≈28s  ·  THE EXPERIMENT, LINE BY LINE
+
+• Tonight's protocol as it was actually run. One continuous recording, three
+  devices, about ten minutes.
+• Two factors. Machine off or on — a dehumidifier, switched. Door: nothing, a
+  normal close, or a slam. Six trials of each door level under each machine state.
+• The door trials are the measurement. The dehumidifier is the unrecorded ambient
+  condition — nobody writes "the dehumidifier was running" in a methods section,
+  which is exactly the class of variable this project is about.
+• One recording rather than six sessions, deliberately: every cell lands on one
+  clock and one thermal state, so the machine is the only thing that changes.
+  Cells get cut out afterwards by timer reading.
+• The question it can answer that a single close type could not — whether a running
+  appliance pushes a NORMAL close below detectability while a SLAM still comes
+  through. A threshold, not a ratio.
+""",
+
+18: """≈26s  ·  WHY n = 6
+
+• This is the pilot's real defect, and it's worth its own slide.
+• An exact permutation test's smallest possible p is fixed by the trial count
+  before any data exists. Two per condition: six arrangements, floor 0.167. Three:
+  twenty arrangements, floor 0.05. Six: 924 arrangements, floor 0.001.
+• Holm correction across our comparisons puts the bar at 0.025. So at n=2 and at
+  n=3 the test cannot reach significance — arithmetically, whatever the doors do.
+• The pilot's problem was never that it found nothing. It's that it could not have
+  found anything. We designed a study whose result was fixed before collection, and
+  didn't notice until we tried to analyse it.
+• The rule we took from it: when the schedule tightens, cut CONDITIONS, not
+  REPLICATES. Replicates make a test capable of answering; conditions make it
+  interesting. A narrow answerable study beats a broad unanswerable one — and we
+  have six files proving it.
+""",
+
+19: """≈24s  ·  ALL SIX CHANNELS, ONE CLOCK
 
 • Six-second session on the dev client. This is the live readout, enlarged.
 • Then the thing we weren't looking for. 502 accelerometer samples in six seconds
@@ -203,7 +237,7 @@ NOTES = {
   That's a finding, and it's also a bug, and we found it by reading our own numbers.
 """,
 
-18: """≈36s  ·  PILOT STUDY   [footage runs here]
+20: """≈30s  ·  PILOT STUDY   [footage runs here]
 
 • The pilot: two baselines, two normal door closes, two slams. One phone, one room,
   Toronto. Chris ran it and narrates it.
@@ -217,7 +251,7 @@ NOTES = {
 • THIS SLIDE IS THE TIME LEVER. Going long? Shorten the footage here.
 """,
 
-19: """≈25s  ·  DERIVED VIBRATION CHANNEL
+21: """≈22s  ·  DERIVED VIBRATION CHANNEL
 
 • Raw accelerometer against the derived channel, same events.
 • Gravity dominates: a door close is about 1% on top of a constant 1 g. Subtract
@@ -231,25 +265,12 @@ NOTES = {
 • The kind of mistake that produces a confident wrong number.
 """,
 
-20: """≈20s  ·  EFFECT OF METRIC CHOICE
-
-• Same four events, three metrics — window energy, peak, RMS.
-• All three order the conditions correctly. What differs is the margin: 1.38 times,
-  1.94, 2.70.
-• Metric choice doesn't change the direction here. It changes how much room you
-  have before noise eats the result. That's why the metric is frozen in the
-  pre-registration instead of picked after looking.
-• Honest note: we first wrote that one of the three failed to separate them. Then
-  we rendered the figure and it hadn't. We fixed the claim.
-""",
-
-# -- section 5 · REFLECTION --------------------------------------------------
-21: """≈3s  ·  DIVIDER
+22: """≈3s  ·  DIVIDER
 
 • "Reflection." Say it — this is where the marks are.
 """,
 
-22: """≈30s  ·  MIDWAY HYPOTHESIS
+23: """≈30s  ·  MIDWAY HYPOTHESIS
 
 • What we believe right now, per channel, and what would change our minds. Stated
   before the data, so it can be wrong.
@@ -269,24 +290,28 @@ NOTES = {
   realised rate.
 """,
 
-23: """≈30s  ·  WHAT WE GOT WRONG
+24: """≈30s  ·  WHAT WE GOT WRONG
 
-• Three, and the third is about our own product.
-• ONE — the pilot could not have succeeded. Two trials per condition. An exact
-  permutation test on n equals two has a minimum attainable p of 0.167, so no
-  arrangement of that data could have cleared 0.05. We designed a study whose result
-  was fixed before we collected anything, and didn't notice until we tried to
-  analyse it. Six per condition puts the floor at 0.001.
-• TWO — there is no single best channel. The derived channel wins on sensitivity
+• Three, and two are about our own product.
+• ONE — the app accepted six sessions it should have refused. All six pilot
+  sessions stored as condition "controlled", including both slams, with site and
+  notes empty in every one. The distance from phone to door is the biggest single
+  determinant of measured amplitude, and it isn't in the record — so the two-site
+  comparison can't be made rigorously. We're building an instrument to capture what
+  nobody writes down, and it let us not write it down.
+• TWO — six sensors appeared to disagree with their own spec. The dev client showed
+  every channel overshooting by the same 1.68×, including a barometer reading 2 Hz
+  when the hardware runs at 1. Six independent sensors don't agree on an error; a
+  shared denominator does. The elapsed timer was counting setInterval firings
+  instead of seconds, and the JS thread was dropping them under sensor load.
+  Display-only — recorded data was never affected — but we believed a wrong number
+  for a day.
+• THREE — there is no single best channel. The derived channel wins on sensitivity
   and loses on cross-device agreement, because each device runs its own window
   clock. Sensitivity and comparability trade against each other.
-• THREE — the app let us mislabel every session, silently. All six pilot sessions
-  are stored as condition "controlled". Including both slams. We're building an
-  instrument to record what nobody wrote down, and it accepted a whole dataset
-  written down wrong without a word. Found by using our own tool.
 """,
 
-24: """≈20s  ·  EITHER OUTCOME IS USEFUL
+25: """≈20s  ·  EITHER OUTCOME IS USEFUL
 
 • Why the question is worth asking whichever way it goes.
 • IF THE SENSORS PASS — ambient context capture is free for anyone with a phone.
@@ -301,13 +326,13 @@ NOTES = {
   that does, and can this app host it."
 """,
 
-25: """≈12s  ·  CONTRIBUTIONS
+26: """≈12s  ·  CONTRIBUTIONS
 
 • Chris ran the door pilot — protocol, recording, the six sessions.
 • The recorder, export schema, analysis and study design are mine.
 """,
 
-26: """≈12s  ·  SUMMARY
+27: """≈10s  ·  SUMMARY
 
 • The recorder works. All six channels record and export.
 • A feasibility result, not a reproducibility result — the honest version of what

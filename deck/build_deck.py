@@ -641,6 +641,61 @@ frozen in the repository, dated, before the data existed.
 """)
 
 # =============================================================================
+# NEW — tonight's protocol and the arithmetic behind n = 6
+# =============================================================================
+# Two ASCII cards rather than slide text: the alignment is the artefact, and a
+# PowerPoint text box re-kerns on another machine and shears the box drawing.
+s = new_slide()
+title(s, "The experiment, line by line",
+      "one continuous recording, three devices, ten minutes")
+picture(s, "mockup_protocol.png", top=1.95, bottom=6.95, max_w=7.4, x=0.85)
+text(s, 8.55, 2.10, 3.95, 4.3, [
+    ("2 \u00d7 3, and the machine is the point.",
+     {"size": 17, "bold": True, "color": NAVY, "space": 10}),
+    ("Machine {off, on} \u00d7 door {none, normal, slam}. The door trials are the "
+     "measurement; the dehumidifier is the unrecorded ambient condition nobody "
+     "would write in a methods section.",
+     {"size": 13.5, "color": MUTED, "space": 12}),
+    ("One recording, not six.",
+     {"size": 17, "bold": True, "color": NAVY, "space": 10}),
+    ("Every cell on one clock and one thermal state, so the machine is the only "
+     "thing that changes. Cells are cut out afterwards by timer reading.",
+     {"size": 13.5, "color": MUTED, "space": 12}),
+    ("The question it can answer:",
+     {"size": 17, "bold": True, "color": DEEPGOLD, "space": 10}),
+    ("whether a running appliance pushes a normal close below detectability while "
+     "a slam still comes through. A threshold, not a ratio.",
+     {"size": 13.5, "color": MUTED}),
+], line=1.28)
+notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
+# NEW — why n = 6
+# =============================================================================
+s = new_slide()
+title(s, "Why n = 6", "the trial count fixes the smallest p obtainable, before any data exists")
+picture(s, "mockup_why_n6.png", top=1.95, bottom=6.90, max_w=7.4, x=0.85)
+text(s, 8.55, 2.10, 3.95, 4.3, [
+    ("This is the pilot's real defect.",
+     {"size": 17, "bold": True, "color": NAVY, "space": 10}),
+    ("Not that the pilot found nothing \u2014 that it could not have found anything. "
+     "With two trials per condition the smallest p an exact permutation test can "
+     "return is 0.167, and the corrected bar is 0.025.",
+     {"size": 13.5, "color": MUTED, "space": 12}),
+    ("We had designed a study whose result was fixed before collection, and did "
+     "not notice until we tried to analyse it.",
+     {"size": 13.5, "bold": True, "color": DEEPGOLD, "space": 12}),
+    ("The rule it gave us.",
+     {"size": 17, "bold": True, "color": NAVY, "space": 10}),
+    ("When the schedule tightens, cut conditions, not replicates. Replicates make "
+     "a test capable of answering; conditions make it interesting.",
+     {"size": 13.5, "color": MUTED}),
+], line=1.28)
+notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
 # NEW — six channels live, and an unlooked-for heterogeneity result
 # =============================================================================
 s = new_slide()
@@ -943,28 +998,31 @@ check against the known elevation of the room.
 # NEW — what we got wrong
 # =============================================================================
 s = new_slide()
-title(s, "What we got wrong", "three, and the third one is about our own product")
+title(s, "What we got wrong", "three, and two of them are about our own product")
 for i, (col, head, body) in enumerate([
-    (DEEPGOLD, "The pilot could not have succeeded.",
-     "Two trials per condition. An exact permutation test on n = 2 has a minimum "
-     "attainable p of 0.167, so no arrangement of the data could have cleared 0.05. "
-     "We designed a study whose result was fixed before collection \u2014 and we did not "
-     "notice until we tried to analyse it. Six per condition puts the floor at 0.001."),
-    (DEEPGOLD, "There is no single best channel.",
-     "The derived vibration channel beats the raw accelerometer on sensitivity, and "
-     "loses to it on cross-device agreement \u2014 each device runs its own 200 ms window "
-     "clock, so two phones disagree about a windowed statistic more than about the "
-     "motion underneath it. Sensitivity and comparability trade against each other."),
-    (GOLD, "The app let us mislabel every session, silently.",
+    (GOLD, "The app accepted six sessions it should have refused.",
      "All six pilot sessions are stored as condition \u201ccontrolled\u201d, including both "
-     "slams. We are building an instrument to record what nobody wrote down, and it "
-     "accepted a whole dataset written down wrong without a word. Found by using it; "
-     "left uncorrected on the record."),
+     "slams \u2014 and with site and notes left empty in every one. The distance from "
+     "phone to door is the largest single determinant of measured amplitude, and "
+     "it is not in the record, so the two-site comparison cannot be made "
+     "rigorously. We are building an instrument to capture what nobody writes "
+     "down, and it let us not write it down."),
+    (DEEPGOLD, "Six sensors appeared to disagree with their own spec.",
+     "The dev client reported every channel overshooting its nominal rate by the "
+     "same 1.68\u00d7 \u2014 including a barometer reading 2 Hz when the hardware runs at "
+     "1. Six independent sensors do not agree on an error; a shared denominator "
+     "does. The elapsed timer counted setInterval firings rather than seconds, "
+     "and the JS thread was dropping them under sensor load."),
+    (DEEPGOLD, "There is no single best channel.",
+     "The derived vibration channel beats the raw accelerometer on sensitivity and "
+     "loses to it on cross-device agreement, because each device runs its own "
+     "window clock. Sensitivity and comparability trade against each other, and we "
+     "did not expect that."),
 ]):
-    yy = 2.20 + i * 1.62
+    yy = 2.12 + i * 1.66
     hexagon(s, 0.85, yy - 0.02, 0.58, str(i + 1), fill=col, size=14)
-    text(s, 1.72, yy, 10.6, 0.38, head, size=19, bold=True, color=NAVY)
-    text(s, 1.72, yy + 0.42, 10.6, 1.05, body, size=14, color=MUTED, line=1.22)
+    text(s, 1.72, yy, 10.6, 0.38, head, size=18, bold=True, color=NAVY)
+    text(s, 1.72, yy + 0.40, 10.6, 1.15, body, size=13.5, color=MUTED, line=1.2)
 notes(s, "PLACEHOLDER")
 
 
@@ -1085,6 +1143,8 @@ ORDER = [
     "div:Changes to the plan",
     "Changes since the proposal",
     "div:Results",
+    "The experiment, line by line",
+    "Why n = 6",
     "All six channels, one clock",
     "Pilot study",
     "Derived vibration channel",
@@ -1125,6 +1185,7 @@ if LEAN:
         "Channels", "One test per sensor", "Cross-device alignment",
         "Privacy properties", "Sync fiducial recovery", "Unlabelled event detection",
         "Scope and limitations", "Standardising the disturbance", "Remaining work",
+        "Effect of metric choice",
     }
     for k in CUT:
         e = _ids[id(REG[k])]
