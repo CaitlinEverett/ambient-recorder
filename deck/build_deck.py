@@ -365,6 +365,29 @@ for _n in (1, 2, 3):
 
 
 # =============================================================================
+# NEW — the app, running, at slide size
+# =============================================================================
+# Full-bleed rather than a panel: the point of this slide is that a person can
+# see the thing work, and a 2-inch phone on a white field does not carry that.
+# The source is portrait, so the 16:9 frame is filled with a blurred, darkened
+# copy of the same footage — the phone keeps its own aspect ratio and no part of
+# the screen is cropped away.
+s = new_slide(dark=True)
+_APP = Path("media/chris_app.mp4")
+if _APP.exists():
+    autoplay(s, s.shapes.add_movie(str(_APP), Inches(0), Inches(0),
+                                   Inches(W), Inches(H),
+                                   poster_frame_image="media/chris_app_poster.jpg",
+                                   mime_type="video/mp4"))
+text(s, 0.85, 0.62, 6.4, 0.5, "Chris, running the app", size=30, bold=True,
+     color=WHITE)
+# Kept short so the line stays inside the dark half of the frame — the blurred
+# fill is bright on the right and gold at 15 pt does not survive it.
+text(s, 0.85, 1.20, 3.4, 0.9, "six channels reading live",
+     size=15, color=GOLD, line=1.2)
+register(s, "chris_app")
+
+# =============================================================================
 # 2 — the idea
 # =============================================================================
 # The same slide three times, adding one paper each. python-pptx cannot write
@@ -1392,6 +1415,7 @@ divider("5", "Reflection",
 ORDER = [
     "__title__",
     "bluf1", "bluf2", "bluf3",
+    "chris_app",
     "div:Aims and objectives",
     "idea0", "idea1", "idea2",
     "aims",
