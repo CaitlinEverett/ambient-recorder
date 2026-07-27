@@ -14,10 +14,10 @@ SECTIONS = {
     1: "Open",
     2: "§ 1 · Aims and objectives",
     7: "§ 2 · Project presentation",
-    15: "§ 3 · Changes to the plan",
-    17: "§ 4 · Results",
-    23: "§ 5 · Reflection",
-    30: "Close",
+    14: "§ 3 · Changes to the plan",
+    16: "§ 4 · Results",
+    21: "§ 5 · Reflection",
+    25: "Close",
 }
 
 prs = Presentation(DECK)
@@ -50,8 +50,8 @@ header = [
     "",
     "## Runtime",
     "",
-    f"- **{shown_n} slides shown**, {len(rows) - shown_n} hidden (`Hide Slide`, still in "
-    "the file for the report)",
+    f"- **{shown_n} slides**, all of them narrated. Cut material is not in this file "
+    "at all — `LEAN= python3 build_deck.py` writes the full version for the report.",
     f"- **Budget: {total}s = {total // 60}:{total % 60:02d}** against a strict 8:00 cap "
     f"— {480 - total}s of margin",
     "- The time lever is the pilot slide. Shorten the footage there first.",
@@ -60,12 +60,12 @@ header = [
     "",
     "| Rubric line | Pts | Slides | Budget |",
     "|---|---|---|---|",
-    "| Recap of aims and objectives | 10 | 2–6 | 79s |",
-    "| Project presentation | 20 | 7–9 | 83s |",
-    "| Changes to original plan | 10 | 15–16 | 45s |",
-    "| Results | 20 | 17–20 | 103s |",
-    "| Reflection | 20 | 23–26 | 94s |",
-    "| Length 5–8 min | 10 | — | 7:26 |",
+    "| Recap of aims and objectives | 10 | 2–6 | 77s |",
+    "| Project presentation | 20 | 7–13 | 94s |",
+    "| Changes to original plan | 10 | 14–15 | 39s |",
+    "| Results | 20 | 16–20 | 114s |",
+    "| Reflection | 20 | 21–24 | 83s |",
+    "| Length 5–8 min | 10 | — | 7:22 |",
     "",
     "## Per-slide",
     "",

@@ -31,7 +31,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
-TEMPLATE, OUT = "gt.pptx", "Covariate_Demo.pptx"
+TEMPLATE, OUT = "gt.pptx", "Covariate_Demo_Full.pptx"
 FIG = Path("figures")
 
 NAVY = RGBColor(0x00, 0x30, 0x57)
@@ -452,27 +452,32 @@ notes(s, "PLACEHOLDER")
 
 
 # =============================================================================
-# NEW — what it looks like to use
+# NEW — what it looks like to use (4-step build: designed, then built)
 # =============================================================================
-s = new_slide()
-title(s, "In use", "recording screen: live values, sampling health, and the O1 gate")
-# Left-aligned, height-bound: the mockup is 0.76 aspect, so at any usable width the
-# height binds first, and centring it would put it under the commentary column.
-picture(s, "mockup_recording.png", top=1.95, bottom=6.95, max_w=4.0, x=0.95)
-text(s, 5.9, 2.20, 6.6, 4.4, [
-    ("Sampling health is on screen, not buried in the export.",
-     {"size": 17, "bold": True, "color": NAVY, "space": 10}),
-    ("Every channel shows its latest value, its sample count and its drop fraction "
-     "while recording. The O1 gate — under 2% dropped samples over at least 30 "
-     "minutes — has its own progress bar, because a session that fails it is not "
-     "worth analysing and the operator should know before walking away.",
-     {"size": 14.5, "color": MUTED, "space": 14}),
-    ("The magnetometer row here is flagged at 3.2%. That is the display doing its job.",
-     {"size": 14.5, "color": DEEPGOLD, "space": 14}),
-    ("Mark Sync and Stop are the only two controls available while recording.",
-     {"size": 14.5, "color": MUTED}),
-], line=1.3)
-notes(s, "PLACEHOLDER")
+# python-pptx cannot write PowerPoint animations, so the reveal is successive
+# slides. Phone frames are 0.466 aspect: at any width wide enough to READ, the
+# height overruns a 16:9 slide. They are therefore sized as evidence-that-it-is-
+# real, and the payload — the live channel table — gets its own slide at 5x.
+SCREENS = [
+    ("phone_mockup.png", "designed", "the spec we built from"),
+    ("phone_home.png", "built", "sensor check: all six present"),
+    ("phone_rec.png", "recording", "00:06 \u2014 six channels live"),
+    ("phone_export.png", "exported", "one JSON file, 182 KB"),
+]
+PW, GAP = 2.02, 0.42
+ROW_X = (W - (4 * PW + 3 * GAP)) / 2
+
+for _n in (1, 2, 3, 4):
+    s = new_slide()
+    title(s, "In use", "what we specified, and what it actually became", k=f"inuse{_n}")
+    for idx, (fname, cap, sub) in enumerate(SCREENS[:_n]):
+        x = ROW_X + idx * (PW + GAP)
+        s.shapes.add_picture(str(FIG / fname), Inches(x), Inches(2.05), Inches(PW))
+        text(s, x, 6.42, PW, 0.28, cap, size=15, bold=True,
+             color=OLDGOLD if idx == 0 else NAVY, align=PP_ALIGN.CENTER)
+        text(s, x - 0.22, 6.70, PW + 0.44, 0.44, sub, size=11.5, color=MUTED,
+             align=PP_ALIGN.CENTER, line=1.15)
+    notes(s, "PLACEHOLDER")
 
 
 # =============================================================================
@@ -636,6 +641,36 @@ frozen in the repository, dated, before the data existed.
 """)
 
 # =============================================================================
+# NEW — six channels live, and an unlooked-for heterogeneity result
+# =============================================================================
+s = new_slide()
+title(s, "All six channels, one clock",
+      "a six-second session on the dev client \u2014 and a result we were not looking for")
+s.shapes.add_picture(str(FIG / "live_channels.png"), Inches(0.85), Inches(2.18),
+                     Inches(6.15))
+text(s, 7.45, 2.20, 5.05, 3.6, [
+    ("Requested 50 Hz. Got 84.",
+     {"size": 18, "bold": True, "color": NAVY, "space": 5}),
+    ("502 accelerometer samples in six seconds. Magnetometer: 42 against a nominal "
+     "25. Both overshoot by the same 1.68\u00d7.",
+     {"size": 13.5, "color": MUTED, "space": 13}),
+    ("The pilot phone did not.",
+     {"size": 18, "bold": True, "color": NAVY, "space": 5}),
+    ("Same code, an iPhone X: 50.2 and 25.1 Hz, measured from the exported files. "
+     "Device heterogeneity, in two of our own phones.",
+     {"size": 13.5, "color": MUTED, "space": 13}),
+    ("And it moves the derived channel.",
+     {"size": 18, "bold": True, "color": DEEPGOLD, "space": 5}),
+    ("Vibration runs at 8 Hz here and 5 in the pilot \u2014 so the 200 ms window is "
+     "counted in samples, not milliseconds. On this device it is really ~119 ms.",
+     {"size": 13.5, "color": MUTED, "space": 13}),
+    ("A constant we froze in the pre-registration turns out to be device-dependent.",
+     {"size": 13.5, "bold": True, "color": NAVY}),
+], line=1.25)
+notes(s, "PLACEHOLDER")
+
+
+# =============================================================================
 # 9 — the pilot (video cue)
 # =============================================================================
 s = new_slide()
@@ -775,16 +810,19 @@ table(s,
        (("magnetometer", DEEPGOLD, True), ("probably not useful\nat this scale", DEEPGOLD, True),
         "event deviation 0.31–0.56 µT;\nbaseline spread 1.03 µT",
         "the magnet ladder is\ndetectable at 10 cm"),
-       (("light · micLevel", DEEPGOLD, True), ("open, no longer\nblocked", DEEPGOLD, True),
-        "dev client builds; both\nchannels now run",
-        "the first exported\nsession holds up"),
-       (("cross-device", MUTED, True), ("untested", MUTED, True),
-        "one device with all six\nchannels",
-        "the two-device run\nreturns r ≥ 0.9")],
-      top=2.12, row_h=0.68, size=12.5)
-text(s, 0.85, 6.72, 10.4, 0.4,
-     "Two channels moved from blocked to open this week. Four runs settle the rest.",
-     size=13.5, color=NAVY)
+       (("light", DEEPGOLD, True), ("sampling, but no\nvalue yet", DEEPGOLD, True),
+        "87 samples in 6 s; the EV\nfield still renders \u2014",
+        "an EV appears under\nknown illumination"),
+       (("micLevel", TEAL, True), ("recording", TEAL, True),
+        "\u221262.1 dBFS, 82 samples\nat 14 Hz, exported",
+        "it tracks the source,\nnot the background"),
+       (("cross-device", DEEPGOLD, True), ("one result already", DEEPGOLD, True),
+        "realised rates differ 1.68\u00d7\nbetween our two phones",
+        "the paired run returns\nr \u2265 0.9 on shared events")],
+      top=2.05, row_h=0.60, size=12.5)
+text(s, 0.85, 6.80, 10.4, 0.4,
+     "Both blocked channels now record. One is already returning a result we did not "
+     "predict.", size=13.5, color=NAVY)
 notes(s, "PLACEHOLDER")
 
 
@@ -1038,8 +1076,8 @@ ORDER = [
     "aims",
     "div:Project presentation",
     "Implementation",
+    "inuse1", "inuse2", "inuse3", "inuse4",
     "Why this is hard",
-    "In use",
     "Channels",
     "One test per sensor",
     "Cross-device alignment",
@@ -1047,6 +1085,7 @@ ORDER = [
     "div:Changes to the plan",
     "Changes since the proposal",
     "div:Results",
+    "All six channels, one clock",
     "Pilot study",
     "Derived vibration channel",
     "Effect of metric choice",
@@ -1074,6 +1113,24 @@ for e in list(sld_lst):
     sld_lst.remove(e)
 for k in ORDER:
     sld_lst.append(_ids[id(REG[k])])
+
+# The lean deck: LEAN=1 removes the cut slides from the file instead of hiding
+# them, so what is open on screen while filming is only what will be narrated.
+# The full deck stays available for the written report.
+import os
+
+LEAN = os.environ.get("LEAN") == "1"
+if LEAN:
+    CUT = {
+        "Channels", "One test per sensor", "Cross-device alignment",
+        "Privacy properties", "Sync fiducial recovery", "Unlabelled event detection",
+        "Scope and limitations", "Standardising the disturbance", "Remaining work",
+    }
+    for k in CUT:
+        e = _ids[id(REG[k])]
+        prs.part.drop_rel(e.rId)
+        sld_lst.remove(e)
+    OUT = "Covariate_Demo.pptx"
 
 prs.save(OUT)
 print(f"wrote {OUT} — {len(prs.slides.__iter__.__self__._sldIdLst)} slides")
