@@ -1147,9 +1147,11 @@ check against the known elevation of the room.
 # NEW — what we got wrong
 # =============================================================================
 s = new_slide()
-title(s, "What we got wrong", "three, and two of them are about our own product")
+title(s, "Things we are still working on",
+      "three, and two of them are about our own product",
+      k="What we got wrong")
 for i, (col, head, body) in enumerate([
-    (GOLD, "We built an instrument that doesn\u2019t insist.",
+    (GOLD, "UI could guide people to make better choices about recording.",
      "Condition defaults to \u201ccontrolled\u201d, and site, notes and placement are all "
      "optional \u2014 so a session can be saved with none of them and the app never asks. "
      "Every session we have recorded, on both sides of the project, came out that way. "
@@ -1458,7 +1460,7 @@ if LEAN:
         # consumer-hardware failure-mode table survives in the full deck and
         # its conclusion — relative change only, never an absolute — is
         # already carried by the BLUF and by "Two phones, one table".
-        "inuse1", "inuse2", "inuse3", "Why this is hard",
+        "inuse1", "inuse2", "inuse3",
     }
     for k in CUT:
         e = _ids[id(REG[k])]
