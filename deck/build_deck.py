@@ -1280,29 +1280,47 @@ notes(s, "PLACEHOLDER")
 # =============================================================================
 s = new_slide(dark=True)
 title(s, "Works cited", dark=True)
+# One paragraph per reference, wrapped by the renderer rather than by hand.
+# The previous version hard-wrapped each entry across three list items with
+# leading spaces for the hanging indent; any renderer that re-flows the box
+# (Keynote, Google Slides, PowerPoint on iPad) collapsed those, which merged
+# Khenkin into Mizell and ate a space in "Biochemistry and Biophysics".
 LIT = [
-    "Mansoury, Hamed, Karmustaji, Al Hannan & Safrany (2021). The edge effect:",
-    "    the trouble with culturing cells in 96-well plates.  Biochemistry and",
-    "    Biophysics Reports 26, 100987.  doi:10.1016/j.bbrep.2021.100987",
-    "Khenkin, Katz, Abate et al. (2020). Consensus statement \u2026 perovskite photovoltaics.",
-    "    Nature Energy 5, 35\u201349.  doi:10.1038/s41560-019-0529-5",
-    "Mizell (2003). Using gravity to estimate accelerometer orientation.  ISWC \u201903, 252\u2013253.",
-    "Zhang, Beresford & Sheret (2019). SensorID: sensor calibration fingerprinting",
-    "    for smartphones.  IEEE Symposium on Security and Privacy.",
-    "Stisen, Blunck, Bhattacharya et al. (2015). Smart devices are different.",
-    "    SenSys \u201915, 127\u2013140.  doi:10.1145/2809695.2809718",
-    "Peguero, Labrador & Cook (2016). Assessing jitter in sensor time series from",
-    "    Android mobile devices.  IEEE SMARTCOMP.  doi:10.1109/SMARTCOMP.2016.7501679",
-    "McNicholas & Mass (2021). Bias correction \u2026 smartphone pressure observations.",
-    "    Weather and Forecasting 36(5), 1867\u20131889.  doi:10.1175/WAF-D-20-0222.1",
-    "Kuhlmann, Garaizar & Reips (2021). Smartphone sensor accuracy varies from device",
-    "    to device.  Behavior Research Methods 53(1), 22\u201333.  doi:10.3758/s13428-020-01404-5",
-    "ISO/IEC 17025:2017, clause 6.3.3 \u2014 monitoring, control and recording of",
-    "    environmental conditions in accredited testing and calibration laboratories.",
-    "Harris, ed. (2019). NISTIR 6969, Selected Laboratory and Measurement Practices",
-    "    and Procedures \u2014 laboratory siting and environmental requirements.",
-    "Kardous & Shaw (2016). Evaluation of smartphone sound measurement applications",
-    "    using external microphones.  JASA 140(4), EL327\u2013EL333.  doi:10.1121/1.4964639",
+    "Mansoury, Hamed, Karmustaji, Al Hannan & Safrany (2021). The edge effect: the "
+    "trouble with culturing cells in 96-well plates. Biochemistry and Biophysics "
+    "Reports 26, 100987. doi:10.1016/j.bbrep.2021.100987",
+
+    "Khenkin, Katz, Abate et al. (2020). Consensus statement for stability assessment "
+    "and reporting for perovskite photovoltaics. Nature Energy 5, 35\u201349. "
+    "doi:10.1038/s41560-019-0529-5",
+
+    "Mizell, D. (2003). Using gravity to estimate accelerometer orientation. "
+    "ISWC \u201903, 252\u2013253.",
+
+    "Zhang, Beresford & Sheret (2019). SensorID: sensor calibration fingerprinting for "
+    "smartphones. IEEE Symposium on Security and Privacy.",
+
+    "Stisen, Blunck, Bhattacharya et al. (2015). Smart devices are different. "
+    "SenSys \u201915, 127\u2013140. doi:10.1145/2809695.2809718",
+
+    "Peguero, Labrador & Cook (2016). Assessing jitter in sensor time series from "
+    "Android mobile devices. IEEE SMARTCOMP. doi:10.1109/SMARTCOMP.2016.7501679",
+
+    "McNicholas & Mass (2021). Bias correction of smartphone pressure observations. "
+    "Weather and Forecasting 36(5), 1867\u20131889. doi:10.1175/WAF-D-20-0222.1",
+
+    "Kuhlmann, Garaizar & Reips (2021). Smartphone sensor accuracy varies from device "
+    "to device. Behavior Research Methods 53(1), 22\u201333. "
+    "doi:10.3758/s13428-020-01404-5",
+
+    "ISO/IEC 17025:2017, clause 6.3.3 \u2014 monitoring, control and recording of "
+    "environmental conditions in accredited testing and calibration laboratories.",
+
+    "Harris, ed. (2019). NISTIR 6969, Selected Laboratory and Measurement Practices "
+    "and Procedures \u2014 laboratory siting and environmental requirements.",
+
+    "Kardous & Shaw (2016). Evaluation of smartphone sound measurement applications "
+    "using external microphones. JASA 140(4), EL327\u2013EL333. doi:10.1121/1.4964639",
 ]
 COURSE = [
     "CS-7470 Mobile & Ubiquitous Computing \u2014 T. Ploetz, T. Starner",
@@ -1315,8 +1333,9 @@ COURSE = [
     "L5-06   Noise",
     "L5-07   Sensor Calibration",
 ]
-text(s, 0.85, 2.16, 7.5, 4.6, "\n".join(LIT), size=10.5,
-     color=RGBColor(0xC8, 0xD2, 0xDC), line=1.45)
+text(s, 0.85, 2.16, 7.5, 4.7,
+     [(r, {"size": 10, "color": RGBColor(0xC8, 0xD2, 0xDC), "space": 4})
+      for r in LIT], line=1.18)
 text(s, 8.75, 2.16, 3.8, 4.6, "\n".join(COURSE), size=11.5,
      color=RGBColor(0xC8, 0xD2, 0xDC), line=1.6)
 text(s, 8.75, 1.80, 3.8, 0.3, "COURSE MATERIAL", size=11, bold=True, color=GOLD)
