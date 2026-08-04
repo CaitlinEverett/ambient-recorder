@@ -4,10 +4,12 @@
 // light/mic are reported from module presence (deep-checked in the dev client).
 
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
+import { VibrationMeter, VibrationSample } from './vibration';
+import { ChannelId } from './schema';
 
 export type HealthStatus = 'ok' | 'warn' | 'fail';
 export interface ChannelCheck {
-  channel: string;
+  channel: ChannelId;
   status: HealthStatus;
   detail: string;
 }
@@ -24,12 +26,18 @@ export async function runHealthCheck(opts: {
   // TS closure-narrowing pitfall and is all the sane-check needs.
   let aMag = NaN, mMag = NaN, pLast = NaN;
   let aN = 0, mN = 0, pN = 0;
+  const vMeter = new VibrationMeter(200); // same window as the live 'vibration' channel
+  const vibWindows: VibrationSample[] = [];
 
   try { await Accelerometer.requestPermissionsAsync(); } catch {}
   Accelerometer.setUpdateInterval(20);
   Magnetometer.setUpdateInterval(40);
   const subs = [
-    Accelerometer.addListener((d) => { aMag = mag3(d.x, d.y, d.z); aN++; }),
+    Accelerometer.addListener((d) => {
+      aMag = mag3(d.x, d.y, d.z); aN++;
+      const v = vMeter.push(d.x, d.y, d.z);
+      if (v) vibWindows.push(v);
+    }),
     Magnetometer.addListener((d) => { mMag = mag3(d.x, d.y, d.z); mN++; }),
     Barometer.addListener((d: any) => { pLast = d.pressure; pN++; }),
   ];
@@ -41,25 +49,43 @@ export async function runHealthCheck(opts: {
 
   // Accelerometer — present, ~50 Hz, total ≈ 1 g at rest.
   if (aN === 0) {
-    out.push({ channel: 'accel', status: 'fail', detail: 'no data — motion permission?' });
+    out.push({ channel: 'accelerometer', status: 'fail', detail: 'no data — motion permission?' });
   } else {
     const rate = aN / secs;
     const sane = aMag >= 0.7 && aMag <= 1.3;
     out.push({
-      channel: 'accel',
+      channel: 'accelerometer',
       status: rate >= 25 && sane ? 'ok' : 'warn',
       detail: `${rate.toFixed(0)} Hz · |a| ${aMag.toFixed(2)} g${sane ? '' : ' — expect ≈1 g at rest'}`,
     });
   }
 
+  // Vibration — not its own sensor: derived from the accelerometer stream above, so
+  // presence just tracks accel. What's worth checking is that windows are actually
+  // closing at the expected 5 Hz and that at-rest RMS is small (a high floor here
+  // usually means the phone is being handled/jostled, not that anything's broken).
+  if (aN === 0) {
+    out.push({ channel: 'vibration', status: 'fail', detail: 'no accel data — derived channel unavailable' });
+  } else {
+    const expectedWindows = Math.floor(ms / 200);
+    const gotWindows = vibWindows.length;
+    const meanRms = gotWindows > 0 ? vibWindows.reduce((a, w) => a + w.rms, 0) / gotWindows : NaN;
+    const sane = Number.isFinite(meanRms) && meanRms < 0.05;
+    out.push({
+      channel: 'vibration',
+      status: gotWindows >= expectedWindows - 1 && sane ? 'ok' : 'warn',
+      detail: `${gotWindows}/${expectedWindows} windows · rest RMS ${meanRms.toFixed(3)} g${sane ? '' : ' — expect ≈0 at rest'}`,
+    });
+  }
+
   // Magnetometer — present, ~25 Hz, magnitude 25–65 µT (Earth's field).
   if (mN === 0) {
-    out.push({ channel: 'mag', status: 'fail', detail: 'no data' });
+    out.push({ channel: 'magnetometer', status: 'fail', detail: 'no data' });
   } else {
     const rate = mN / secs;
     const sane = mMag >= 20 && mMag <= 70;
     out.push({
-      channel: 'mag',
+      channel: 'magnetometer',
       status: rate >= 12 && sane ? 'ok' : 'warn',
       detail: `${rate.toFixed(0)} Hz · |B| ${mMag.toFixed(0)} µT${sane ? '' : ' — expect 25–65'}`,
     });
@@ -67,11 +93,11 @@ export async function runHealthCheck(opts: {
 
   // Barometer — present, pressure 300–1100 hPa.
   if (pN === 0) {
-    out.push({ channel: 'baro', status: 'fail', detail: 'no data / no barometer on this device' });
+    out.push({ channel: 'barometer', status: 'fail', detail: 'no data / no barometer on this device' });
   } else {
     const sane = pLast >= 300 && pLast <= 1100;
     out.push({
-      channel: 'baro',
+      channel: 'barometer',
       status: sane ? 'ok' : 'warn',
       detail: `${pLast.toFixed(1)} hPa${sane ? '' : ' — out of range'}`,
     });
@@ -84,7 +110,7 @@ export async function runHealthCheck(opts: {
     detail: opts.hasLight ? 'native module present' : 'dev build only (Expo Go)',
   });
   out.push({
-    channel: 'mic',
+    channel: 'micLevel',
     status: opts.hasMic ? 'ok' : 'warn',
     detail: opts.hasMic ? 'native module present' : 'dev build only (Expo Go)',
   });

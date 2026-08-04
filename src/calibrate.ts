@@ -5,9 +5,11 @@
 
 import { Accelerometer, Barometer, Magnetometer } from 'expo-sensors';
 import * as FileSystem from 'expo-file-system/legacy';
+import { VibrationMeter } from './vibration';
+import { ChannelId } from './schema';
 
 export interface ChannelBaseline {
-  channel: string;
+  channel: ChannelId;
   n: number;
   mean: number; // mean magnitude (accel g, mag µT, baro hPa)
   noiseFloor: number; // std of magnitude
@@ -38,19 +40,25 @@ export async function runCalibration(opts: { seconds?: number; experimentID: str
   const aMags: number[] = [];
   const mMags: number[] = [];
   const pVals: number[] = [];
+  const vRms: number[] = [];
+  const vMeter = new VibrationMeter(200); // same window as the live 'vibration' channel
 
   try { await Accelerometer.requestPermissionsAsync(); } catch {}
   Accelerometer.setUpdateInterval(20);
   Magnetometer.setUpdateInterval(40);
   const subs = [
-    Accelerometer.addListener((d) => aMags.push(mag3(d.x, d.y, d.z))),
+    Accelerometer.addListener((d) => {
+      aMags.push(mag3(d.x, d.y, d.z));
+      const v = vMeter.push(d.x, d.y, d.z);
+      if (v) vRms.push(v.rms);
+    }),
     Magnetometer.addListener((d) => mMags.push(mag3(d.x, d.y, d.z))),
     Barometer.addListener((d: any) => pVals.push(d.pressure)),
   ];
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
   subs.forEach((s) => s.remove());
 
-  const mk = (channel: string, vals: number[]): ChannelBaseline => {
+  const mk = (channel: ChannelId, vals: number[]): ChannelBaseline => {
     const { mean, std } = stats(vals);
     return { channel, n: vals.length, mean, noiseFloor: std, rate: vals.length / seconds };
   };
@@ -61,7 +69,7 @@ export async function runCalibration(opts: { seconds?: number; experimentID: str
     experimentID: opts.experimentID,
     durationS: seconds,
     capturedAt: new Date().toISOString(),
-    channels: [mk('accelerometer', aMags), mk('magnetometer', mMags), mk('barometer', pVals)],
+    channels: [mk('accelerometer', aMags), mk('vibration', vRms), mk('magnetometer', mMags), mk('barometer', pVals)],
   };
 }
 

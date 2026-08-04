@@ -6,6 +6,8 @@
 // callers. When we wire GUIDE, only this file changes.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ChannelId } from './schema';
+import { DEFAULT_ENABLED_CHANNELS } from './channels';
 
 export interface Experiment {
   id: string;
@@ -13,6 +15,7 @@ export interface Experiment {
   notes: string;
   createdAt: string; // ISO 8601
   source: 'local' | 'guide';
+  enabledChannels: ChannelId[]; // which channels this experiment records
 }
 
 const KEY = 'covariate.experiments.v1';
@@ -20,8 +23,11 @@ const KEY = 'covariate.experiments.v1';
 export async function listExperiments(): Promise<Experiment[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    const arr = raw ? (JSON.parse(raw) as Experiment[]) : [];
-    return Array.isArray(arr) ? arr : [];
+    type Stored = Omit<Experiment, 'enabledChannels'> & { enabledChannels?: ChannelId[] };
+    const arr = raw ? (JSON.parse(raw) as Stored[]) : [];
+    if (!Array.isArray(arr)) return [];
+    // Back-fill experiments saved before enabledChannels existed.
+    return arr.map((e) => ({ ...e, enabledChannels: e.enabledChannels ?? DEFAULT_ENABLED_CHANNELS }));
   } catch {
     return [];
   }
@@ -34,9 +40,25 @@ export async function createExperiment(name: string, notes = ''): Promise<Experi
     notes: notes.trim(),
     createdAt: new Date().toISOString(),
     source: 'local',
+    enabledChannels: DEFAULT_ENABLED_CHANNELS,
   };
   const all = await listExperiments();
   all.unshift(exp);
   await AsyncStorage.setItem(KEY, JSON.stringify(all));
   return exp;
+}
+
+export async function updateExperiment(id: string, patch: Partial<Experiment>): Promise<Experiment[]> {
+  const all = await listExperiments();
+  const next = all.map((e) => (e.id === id ? { ...e, ...patch } : e));
+  await AsyncStorage.setItem(KEY, JSON.stringify(next));
+  return next;
+}
+
+/** Removes the experiment definition only — any sessions already recorded under it are untouched. */
+export async function deleteExperiment(id: string): Promise<Experiment[]> {
+  const all = await listExperiments();
+  const next = all.filter((e) => e.id !== id);
+  await AsyncStorage.setItem(KEY, JSON.stringify(next));
+  return next;
 }
